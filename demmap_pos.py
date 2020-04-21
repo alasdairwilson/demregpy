@@ -27,7 +27,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
         dnin=dd[i,:].squeeze()
         ednin[:]=ed[i,:].squeeze()
         #does dem_norm0 exist
-        if (np.sum(dem_norm0) != 0):
+        if (dem_norm0.shape[0] != 0):
         #single norm from the array
             dem_reg_wght=dem_norm0[i,:].squeeze()
         for kk in np.arange(nf):
@@ -43,9 +43,10 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
             piter=0
             rgt=reg_tweak
 
-            L=np.zeros(nt,nt)
+            L=np.zeros([nt,nt])
 
-            test_dem_reg=0
+            test_dem_reg=(np.zeros(1)).astype(int)
+            
     #  If you have supplied an initial guess/constraint normalized DEM then don't
     #  need to calculate one (either from L=1/sqrt(dLogT) or min of EM loci)
       
@@ -53,7 +54,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
     #  and no element 0 or less.
             if( len(dem_reg_wght) == nt):
                 if (np.prod(dem_reg_wght) > 0):
-                    test_dem_reg=1
+                    test_dem_reg=np.ones(1).astype(int)
             # use the min of the emloci as the initial dem_reg
             if ((test_dem_reg).shape[0] == nt):
                 if (np.sum(glc) > 0.0):
@@ -67,18 +68,32 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
                         dem_model[ttt]=min(emloci[ttt,:] > 0.)
                     dem_model=np.convolve(dem_model,np.ones(3)/3)[1:-1]
                     dem_reg=dem_model/max(dem_model)+1e-10
-                for gg in np.arrange(nf):
+                else:
+                    for gg in np.arrange(nf):
                     # Calculate the initial constraint matrix
                     # Just a diagional matrix scaled by dlogT
                     L[gg,gg]=1.0/sqrt(dlogt[gg])
-                    dem_inv_gsvdcsq,RMatrixin,L,sva,svb,U,V,W
-                    dem_inv_reg_parameter_map,sva,svb,U,W,DN,eDN,rgt,lamb,nmu
+         #           dem_inv_gsvdcsq,RMatrixin,L,sva,svb,U,V,W
+         #           dem_inv_reg_parameter_map,sva,svb,U,W,DN,eDN,rgt,lamb,nmu
                     for kk in np.arange(nf):
                          filter[kk,kk]=sva[kk]/(sva[kk]*sva[kk]+svb[kk]*svb[kk]*lamb)
                     # kdag=W##matrix_multiply(U[0:nf-1,0:nf-1],filter,/atrans)
                     # dr0=reform(kdag##dn)
+                    #these are hard to do right now in python due top lack of ## operator,
+                    # only take the positive with ceratin amount (fcofmx) of max, then make rest small positive
+                    fcofmx=1e-4
+                    dem_reg=dr0*(dr0 gt 0 and dr0 gt fcofmx*max(dr0))+1*(dr0 lt 0 or dr0 lt fcofmx*max(dr0))
+                    dem_reg=dem_reg/(fcofmx*max(dr0))
+            else:
+                dem_reg=dem_reg_wght
+
+            while(ndem > 0 and piter < max_iter):
+                for kk in np.arange(nt):
+                    L[kk,kk]=np.sqrt(dlotT[kk])/np.sqrt(abs(dem_reg[kk])) 
+                
+                sva,svb,U,V,W = dem_inv_gsvdcsq(RMatrixin,L)
+                DN,eDN,rgt,lamb,nmu=dem_inv_reg_parameter_map(sva,svb,U,W)
 
 
-
-    # now we work on deminv_gsvdcsq to be continued.....
+    # now we work on deminv_gsvdcsq...to be continued.....
                 
