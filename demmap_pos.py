@@ -69,14 +69,13 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
                     dem_model=np.convolve(dem_model,np.ones(3)/3)[1:-1]
                     dem_reg=dem_model/max(dem_model)+1e-10
                 else:
-                    for gg in np.arrange(nf):
                     # Calculate the initial constraint matrix
                     # Just a diagional matrix scaled by dlogT
-                    L[gg,gg]=1.0/sqrt(dlogt[gg])
-         #           dem_inv_gsvdcsq,RMatrixin,L,sva,svb,U,V,W
-         #           dem_inv_reg_parameter_map,sva,svb,U,W,DN,eDN,rgt,lamb,nmu
+                    L=diag(1.0/sqrt(dlogt[:]))
+    #               dem_inv_gsvdcsq,RMatrixin,L,sva,svb,U,V,W
+    #               dem_inv_reg_parameter_map,sva,svb,U,W,DN,eDN,rgt,lamb,nmu
                     for kk in np.arange(nf):
-                         filter[kk,kk]=sva[kk]/(sva[kk]*sva[kk]+svb[kk]*svb[kk]*lamb)
+                        filter[kk,kk]=sva[kk]/(sva[kk]*sva[kk]+svb[kk]*svb[kk]*lamb)
                     # kdag=W##matrix_multiply(U[0:nf-1,0:nf-1],filter,/atrans)
                     # dr0=reform(kdag##dn)
                     #these are hard to do right now in python due top lack of ## operator,

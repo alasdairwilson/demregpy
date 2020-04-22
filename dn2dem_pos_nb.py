@@ -12,8 +12,9 @@ import pandas as pd
 import astropy
 from astropy import time
 import astropy.units as u
+from astropy.units import imperial
 from astropy.visualization import time_support
-
+imperial.enable()
 
 
 def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,dem,edem,elogt,chisq,dn_reg,reg_tweak=1.0,max_iter=10,gloci=0,rgt_fact=1.5,dem_norm0=0):
