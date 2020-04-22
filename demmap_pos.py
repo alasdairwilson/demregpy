@@ -3,9 +3,7 @@ import scipy
 import concurrent.futures
 from dem_inv_gsvd import dem_inv_gsvd
 from dem_reg_map import dem_reg_map
-def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
-  edem,elogt,dn_reg,reg_tweak=1,max_iter=10,rgt_fact=1.5, \
-  dem_norm0=0):
+def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
     na=dd.shape[0]
     nf=rmatrix.shape[1]
     nt=logt.shape[0]
@@ -134,4 +132,4 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
             if(np.mod(i,5000) == 0):
                 perc_done=i/na*100
                 print("{} of {} : {} %% complete".format(i,na,perc_done))   
-
+    return dem,chisq,edem,elogt,dn_reg

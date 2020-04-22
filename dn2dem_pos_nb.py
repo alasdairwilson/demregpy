@@ -18,7 +18,7 @@ import os
 imperial.enable()
 
 
-def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,dem,edem,elogt,chisq,dn_reg,reg_tweak=1.0,max_iter=10,gloci=0,rgt_fact=1.5,dem_norm0=0):
+def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,gloci=0,rgt_fact=1.5,dem_norm0=0):
     # Performs a Regularization on solar data, returning the Differential Emission Measure (DEM)
     # using the method of Hannah & Kontar A&A 553 2013
     # Basically getting DEM(T) out of g(f)=K(f,T)#DEM(T)
@@ -124,8 +124,7 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,dem,edem,elogt,chisq,dn_re
 # Do we have an initial DEM guess/constraint to send to demmap_pos as well?
     if ( dem0.ndim==dn.ndim ):
         dem01d=np.reshape(dem0,[nx*ny,nt])
-        demmap_pos(dn1d,edn1d,rmatrix,logt,dlogt,glc,dem1d,chisq1d,\
-            edem1d,elogt1d,dn_reg1d,reg_tweak=reg_tweak,max_iter=max_iter,\
+        demmap_pos(dn1d,edn1d,rmatrix,logt,dlogt,glc,reg_tweak=reg_tweak,max_iter=max_iter,\
                 rgt_fact=rgt_fact,dem_norm0=dem01d)
     # else:
     #     demmap_pos(dn1d,edn1d,RMatrix,logt,dlogt,glc,dem1d,chisq1d,\
@@ -133,15 +132,16 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,dem,edem,elogt,chisq,dn_re
     #             rgt_fact=rgt_fact)
     
     #reshape the 1d arrays to original dimensions and squeeze extra dimensions
-    dem=(np.reshape(dem1d,[nx,ny,nt])*sclf).squeeze
-    edem=(np.reshape(edem1d,[nx,ny,nt])*sclf).squeeze
-    elogt=(np.reshape(elogt1d,[ny,nx,nt])/(2.0*np.sqrt(2.*np.log(2.)))).squeeze
-    chisq=(np.reshape(chisq1d,[ny,nx])).squeeze
-    dn_reg=(np.reshape(dn_reg1d,[nx,ny,nf])).squeeze
+    dem=(np.reshape(dem1d,[nx,ny,nt])*sclf).squeeze()
+    edem=(np.reshape(edem1d,[nx,ny,nt])*sclf).squeeze()
+    elogt=(np.reshape(elogt1d,[ny,nx,nt])/(2.0*np.sqrt(2.*np.log(2.)))).squeeze()
+    chisq=(np.reshape(chisq1d,[ny,nx])).squeeze()
+    dn_reg=(np.reshape(dn_reg1d,[nx,ny,nf])).squeeze()
+    #end the timing
     t_end = astropy.time.Time.now()
     print('total elapsed time =', astropy.time.Time(t_end-t_start,format='datetime'))
-
-    #end the timing
+    return dem,edem,elogt,chisq,dn_reg
+    
 
 nx=1024
 ny=1024
@@ -151,10 +151,12 @@ os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
 temperatures=10**np.linspace(5.7,7.3,num=nt+1)
 tresp = pd.read_csv('tresp.csv').to_numpy()
 # print(tresp_logt.keys())
-data=np.ones([nx,ny,nf])
-edata=np.ones([nx,ny,nf])/10
-dem_norm=np.ones([nx,ny,nt])
-
+# data=np.ones([nx,ny,nf])
+# edata=np.ones([nx,ny,nf])/10
+# dem_norm=np.ones([nx,ny,nt])
+data=np.array([3.4,13.8,184,338,219.55,12.22])
+edata=np.array([0.2,0.43,7.83,12.9,5.80,0.23])
+dem_norm=np.array([ 0.082588151,0.18005607,0.30832890,0.47582966, 0.66201794,0.83059740,0.93994260,0.95951378 ,0.88358527,0.73393929, 0.54981130, 0.37136465,0.22609001 , 0.11025056,0.1,0.1])
 # dem_norm[0,0,:]=np.arange(16)
 # dem_norm[:,0:100,0]=np.arange(100)
 # dem1d=np.reshape(dem_norm,[nx*ny,nt])
@@ -186,8 +188,6 @@ for i,c in enumerate(channels):
 tresp_logt=tresp[:,0]
 tresp_calibration=tresp[:,1:]/deg_calibration
 trmatrix=deg[:]*tresp_calibration
-print('1',trmatrix.shape)
-print(tresp_calibration.shape)
 
 # time_0 = astropy.time.Time('2010-06-01T00:00:00', scale='utc')
 # now = astropy.time.Time.now()
@@ -207,6 +207,6 @@ print(tresp_calibration.shape)
 # ax.set_ylabel('Degradation')
 # plt.show()
 
-dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,1,1,1,1,1,dem_norm0=dem_norm)
-
+x=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm)
+print(x)
 
