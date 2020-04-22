@@ -1,6 +1,8 @@
 import numpy as np
 import scipy
-
+import concurrent.futures
+from dem_inv_gsvd import dem_inv_gsvd
+from dem_reg_map import dem_reg_map
 def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
   edem,elogt,dn_reg,reg_tweak=1,max_iter=10,rgt_fact=1.5, \
   dem_norm0=0):
@@ -19,7 +21,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
     kdagk=np.zeros([nt,nt])
     dn_reg=np.zeros([na,nf])
     ednin=np.zeros([nf])
-    ltt=min(logt)+(max(logt)-min(logt))*np.arange(51)/(51-1.0)
+    ltt=min(logt)+1e-8+(max(logt)-min(logt))*np.arange(51)/(52-1.0)
     nmu=42
     #for each dem
     for i in np.arange(na):
@@ -73,12 +75,12 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
                     # Just a diagional matrix scaled by dlogT
                     L=diag(1.0/sqrt(dlogt[:]))
                     #run gsvd
-                    sva,svb,U,V,W=dem_inv_gsvd(RMatrixin,L)
+                    sva,svb,U,V,W=dem_inv_gsvd(rmatrixin.T,L)
                     #run reg map
                     lamb=dem_reg_map(sva,svb,U,W,DN,eDN,rgt,nmu)
                     #filt, diagonal matrix
-                    filt=diag(sva[/(sva[kk]**2+svb[kk]**2*lamb))
-                    kdag=W@(U[:nf,:nf].T@filt)
+                    filt=diag(sva/(sva**2+svb**2*lamb))
+                    kdag=W@(U[:nf,:nf]@filt)
                     dr0=(kdag@dn).squeeze()
                     # only take the positive with certain amount (fcofmx) of max, then make rest small positive
                     fcofmx=1e-4
@@ -94,11 +96,10 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
                 #make L from 1/dem reg scaled by dlogt and diagonalise
                 L=np.diag(dlogt/np.sqrt(abs(dem_reg))) 
                 #call gsvd and reg map
-                sva,svb,U,V,W = dem_inv_gsvdcsq(RMatrixin,L)
-                lamb=dem_inv_reg_parameter_map(sva,svb,U,W,DN,eDN,rgt,nmu)
-                filt=diag(sva[/(sva[kk]**2+svb[kk]**2*lamb))
-                kdag=W@(U[:nf,:nf].T@filt)
-                
+                sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
+                lamb=dem_reg_map(sva,svb,U,W,dn,edn,rgt,nmu)
+                filt=np.diag(sva/(sva**2+svb**2*lamb))
+                kdag=W@(U[:nf,:nf]@filt)              
                 dem_reg_out=(kdag@dn).squeeze()
 
                 ndem=len(dem_reg_out[dem_reg_out < 0])
@@ -107,21 +108,22 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
 
             #put the fresh dem into the array of dem
             dem[i,:]=dem_reg_out
-                
+
             #work out the theoretical dn and compare to the input dn
-            dn_reg[i,:]=(rmatrix @ dem_reg_out).squeeze()
+            dn_reg[i,:]=(rmatrix.T @ dem_reg_out).squeeze()
             residuals=(dnin-dn_reg[i,:])/ednin
             #work out the chisquared
             chisq=np.sum(residuals**2)/(nf)
 
             #do error calculations on dem
-            delxi2=kdag.T@kdag
-            edem[i,:]=sqrt(np.diag(kdag))
+            delxi2=kdag@kdag.T
+            print('3',kdag.shape)
+            edem[i,:]=np.sqrt(np.diag(delxi2))
 
-            kdagk=kdag@rmatrixin
-            #errors on logt
+            kdagk=kdag@rmatrixin.T
+            #errors on 
             for kk in np.arange(nt):
-                f=scipy.interpolate.interp1d(kdagk[kk,:],logt)
+                f=scipy.interpolate.interp1d(kdagk[kk,:],logt,fill_value='extrapolate')
                 rr=f(ltt)
 
                 hm_mask=(rr >= max(kdagk[kk,:])/2.)

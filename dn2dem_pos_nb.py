@@ -14,6 +14,7 @@ from astropy import time
 import astropy.units as u
 from astropy.units import imperial
 from astropy.visualization import time_support
+import os
 imperial.enable()
 
 
@@ -146,12 +147,13 @@ nx=1024
 ny=1024
 nf=6
 nt=16
-
+os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
 temperatures=10**np.linspace(5.7,7.3,num=nt+1)
-tresp = pd.read_csv("tresp.csv").to_numpy()
+tresp = pd.read_csv('tresp.csv').to_numpy()
 # print(tresp_logt.keys())
-data=np.zeros([nx,ny,nf])
-dem_norm=np.zeros([nx,ny,nt])
+data=np.ones([nx,ny,nf])
+edata=np.ones([nx,ny,nf])/10
+dem_norm=np.ones([nx,ny,nt])
 
 # dem_norm[0,0,:]=np.arange(16)
 # dem_norm[:,0:100,0]=np.arange(100)
@@ -183,7 +185,8 @@ for i,c in enumerate(channels):
 
 tresp_logt=tresp[:,0]
 tresp_calibration=tresp[:,1:]/deg_calibration
-trmatrix=tresp_calibration*deg
+trmatrix=deg[:]*tresp_calibration
+print('1',trmatrix.shape)
 print(tresp_calibration.shape)
 
 # time_0 = astropy.time.Time('2010-06-01T00:00:00', scale='utc')
@@ -204,6 +207,6 @@ print(tresp_calibration.shape)
 # ax.set_ylabel('Degradation')
 # plt.show()
 
-dn2dem_pos_nb(data,1,trmatrix,tresp_logt,temperatures,1,1,1,1,1,dem_norm0=dem_norm)
+dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,1,1,1,1,1,dem_norm0=dem_norm)
 
 
