@@ -79,7 +79,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
                     #filt, diagonal matrix
                     filt=diag(sva[/(sva[kk]**2+svb[kk]**2*lamb))
                     kdag=W@(U[:nf,:nf].T@filt)
-                    dr0=(kdag@dn).squeeze
+                    dr0=(kdag@dn).squeeze()
                     # only take the positive with certain amount (fcofmx) of max, then make rest small positive
                     fcofmx=1e-4
                     mask=np.where(dr0 > 0) and (dr0 > fcofmax*np.max(dr0)) 
@@ -90,13 +90,46 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
             else:
                 dem_reg=dem_reg_wght
 
-            while(ndem > 0 and piter < max_iter):
-                for kk in np.arange(nt):
-                    L=np.sqrt(dlotT[kk])/np.sqrt(abs(dem_reg[kk])) 
-                
+            while((ndem > 0) and (piter < max_iter)):
+                #make L from 1/dem reg scaled by dlogt and diagonalise
+                L=np.diag(dlogt/np.sqrt(abs(dem_reg))) 
+                #call gsvd and reg map
                 sva,svb,U,V,W = dem_inv_gsvdcsq(RMatrixin,L)
                 lamb=dem_inv_reg_parameter_map(sva,svb,U,W,DN,eDN,rgt,nmu)
+                filt=diag(sva[/(sva[kk]**2+svb[kk]**2*lamb))
+                kdag=W@(U[:nf,:nf].T@filt)
+                
+                dem_reg_out=(kdag@dn).squeeze()
 
+                ndem=len(dem_reg_out[dem_reg_out < 0])
+                rgt=rgt_fact*rgt
+                piter+=1
+
+            #put the fresh dem into the array of dem
+            dem[i,:]=dem_reg_out
                 
-    # now we work on deminv_gsvdcsq...to be continued.....
-                
+            #work out the theoretical dn and compare to the input dn
+            dn_reg[i,:]=(rmatrix @ dem_reg_out).squeeze()
+            residuals=(dnin-dn_reg[i,:])/ednin
+            #work out the chisquared
+            chisq=np.sum(residuals**2)/(nf)
+
+            #do error calculations on dem
+            delxi2=kdag.T@kdag
+            edem[i,:]=sqrt(np.diag(kdag))
+
+            kdagk=kdag@rmatrixin
+            #errors on logt
+            for kk in np.arange(nt):
+                f=scipy.interpolate.interp1d(kdagk[kk,:],logt)
+                rr=f(ltt)
+
+                hm_mask=(rr >= max(kdagk[kk,:])/2.)
+                elogt[i,kk]=dlogt[kk]
+                if (np.sum(hm_mask) > 0):
+                    elogt[i,kk]=ltt[hm_mask][-1]-ltt[hm_mask][0]
+
+            if(np.mod(i,5000) == 0):
+                perc_done=i/na*100
+                print("{} of {} : {} %% complete".format(i,na,perc_done))   
+
