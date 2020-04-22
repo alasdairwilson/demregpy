@@ -37,20 +37,25 @@ def dem_inv_gsvd(A,B):
         the vector of the diagonal values of SB
   
 
-    """
-    AB1=A@inv(B) # need to check with IGH if this is correct
+    """  
+    #calculate the matrix A*B^-1
+    AB1=A@inv(B)
+
+    #use np.linalg.svd to calculate the singular value decomposition
     u,s,v = np.linalg.svd(AB1,full_matrices=True,compute_uv=True)
-#run gscvd from lapack uisng f2py here (Actually just using numpy now)
+    #from the svd products calculate the diagonal components form the gsvd
     beta=1./np.sqrt(1+s**2)
     alpha=s*beta
-    #diagonalise alpha and beta
+    #diagonalise alpha and beta into SA and SB
     onea=np.diag(alpha)
     oneb=np.diag(beta)
-
+    #calculate the weighting matrix
     w2=inv(inv(onea)@u.T@A)
     #this verification step to check w and w2 recovered from u and v respectively match, turns out LAPACK 
     # svd is returns the hermitian transpsoe of v and not v itself
+    #w2 and w should be (and are in tests) identical
     w=inv(inv(oneb)@v@B)
+    #return gsvd products, transposing v as we do.
     return alpha,beta,u,v.T,w,w2
 
 x=np.array([[1,3,5,9],[2,4,-1,2],[1,7,-3,9],[4,-1,1,14]])
@@ -62,14 +67,4 @@ a,b,u,v,wt,w2=dem_inv_gsvd(x,y)
 #testing gsvd prodcuts
 print(np.isclose(u@np.diag(a)@inv(wt),x))
 print(np.isclose(v@np.diag(b)@inv(wt),y))
-
-print(a)
-print(b)
-print(u)
-print(v)
-print(wt)
-print(w2)
-
-
-
 
