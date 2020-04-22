@@ -72,27 +72,31 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,dem,chisq, \
                     # Calculate the initial constraint matrix
                     # Just a diagional matrix scaled by dlogT
                     L=diag(1.0/sqrt(dlogt[:]))
-    #               dem_inv_gsvdcsq,RMatrixin,L,sva,svb,U,V,W
-    #               dem_inv_reg_parameter_map,sva,svb,U,W,DN,eDN,rgt,lamb,nmu
-                    for kk in np.arange(nf):
-                        filter[kk,kk]=sva[kk]/(sva[kk]*sva[kk]+svb[kk]*svb[kk]*lamb)
-                    # kdag=W##matrix_multiply(U[0:nf-1,0:nf-1],filter,/atrans)
-                    # dr0=reform(kdag##dn)
-                    #these are hard to do right now in python due top lack of ## operator,
-                    # only take the positive with ceratin amount (fcofmx) of max, then make rest small positive
+                    #run gsvd
+                    sva,svb,U,V,W=dem_inv_gsvd(RMatrixin,L)
+                    #run reg map
+                    lamb=dem_reg_map(sva,svb,U,W,DN,eDN,rgt,nmu)
+                    #filt, diagonal matrix
+                    filt=diag(sva[/(sva[kk]**2+svb[kk]**2*lamb))
+                    kdag=W@(U[:nf,:nf].T@filt)
+                    dr0=(kdag@dn).squeeze
+                    # only take the positive with certain amount (fcofmx) of max, then make rest small positive
                     fcofmx=1e-4
-                    dem_reg=dr0*(dr0 gt 0 and dr0 gt fcofmx*max(dr0))+1*(dr0 lt 0 or dr0 lt fcofmx*max(dr0))
-                    dem_reg=dem_reg/(fcofmx*max(dr0))
+                    mask=np.where(dr0 > 0) and (dr0 > fcofmax*np.max(dr0)) 
+                    dem_reg[mask]=dr0[mask]
+                    dem_reg[~mask]=1
+                    #scale and then smooth by convolution with boxcar width 3
+                    dem_reg=np.convolve(dem_reg/(fcofmx*max(dr0),np.ones(3)/3))[1:-1]
             else:
                 dem_reg=dem_reg_wght
 
             while(ndem > 0 and piter < max_iter):
                 for kk in np.arange(nt):
-                    L[kk,kk]=np.sqrt(dlotT[kk])/np.sqrt(abs(dem_reg[kk])) 
+                    L=np.sqrt(dlotT[kk])/np.sqrt(abs(dem_reg[kk])) 
                 
                 sva,svb,U,V,W = dem_inv_gsvdcsq(RMatrixin,L)
-                DN,eDN,rgt,lamb,nmu=dem_inv_reg_parameter_map(sva,svb,U,W)
+                lamb=dem_inv_reg_parameter_map(sva,svb,U,W,DN,eDN,rgt,nmu)
 
-
+                
     # now we work on deminv_gsvdcsq...to be continued.....
                 
