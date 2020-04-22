@@ -21,7 +21,11 @@ x=np.array([[1,3,5,9],[2,4,-1,2],[1,7,-3,9],[4,-1,1,14]])
 y=np.array([[2,7,1,3],[12,3,-2,-1],[-2,-4,5,1],[-1,7,-1,-3]])
 
 
-a,b,u,v,wt,w2=dem_inv_gsvdcsq(x,y)
+a,b,u,v,wt,w2=dem_inv_gsvd(x,y)
+
+#testing gsvd prodcuts
+print(np.isclose(u@np.diag(a)@inv(wt),x))
+print(np.isclose(v@np.diag(b)@inv(wt),y))
 
 print(a)
 print(b)
