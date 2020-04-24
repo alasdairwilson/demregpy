@@ -43,14 +43,18 @@ def dem_inv_gsvd(A,B):
 
     #use np.linalg.svd to calculate the singular value decomposition
     u,s,v = np.linalg.svd(AB1,full_matrices=True,compute_uv=True)
+
+    
     #from the svd products calculate the diagonal components form the gsvd
     beta=1./np.sqrt(1+s**2)
     alpha=s*beta
     #diagonalise alpha and beta into SA and SB
     onea=np.diag(alpha)
     oneb=np.diag(beta)
+    print(u.shape,onea.shape,A.shape)
     #calculate the weighting matrix
     w=pinv(inv(onea)@inv(u)@A)
+    print(np.isclose(u@onea@pinv(w),A))
     #return gsvd products, transposing v as we do.
     return alpha,beta,u,v.T,w
 # x=np.random.randn(16,6)
@@ -58,5 +62,5 @@ def dem_inv_gsvd(A,B):
 
 # a,b,u,v,wt=dem_inv_gsvd(x,y)
 
-# #testing gsvd prodcuts
+#testing gsvd prodcuts
 # print(np.isclose(u@np.diag(a)@pinv(wt),x))

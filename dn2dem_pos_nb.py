@@ -25,11 +25,13 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,
 
 
     #create our bin averages:
-    logt=np.log10([np.mean([(temps[i]),(temps[i+1])]) for i in np.arange(0,len(temps)-1)])
+    logt=([np.mean([(np.log10(temps[i])),np.log10((temps[i+1]))]) for i in np.arange(0,len(temps)-1)])
     #and widths
-    dlogt=(temps[1:]-temps[:-1])
+    dlogt=(np.log10(temps[1:])-np.log10(temps[:-1]))
+    nt=len(dlogt)
+    logt=(np.array([np.log10(temps[0])+(dlogt[i]*(float(i)+0.5)) for i in np.arange(nt)]))
     #number of DEM entries
-    nt=len(logt)
+
     #hopefully we can deal with a variety of data, nx,ny,nf
     sze=dn_in.shape
     #for a single pixel
@@ -100,7 +102,7 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,
     #Put in the 1/K factor (remember doing it in logT not T hence the extra terms)
 
     for i in np.arange(nf):
-        rmatrix[:,i]=tr[:,i]*10.0**logt
+        rmatrix[:,i]=tr[:,i]*10.0**logt*np.log(10.0**dlogt)
     #Just scale so not dealing with tiny numbers
     sclf=1E15
     rmatrix=rmatrix*sclf
@@ -146,9 +148,9 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,
 nx=1024
 ny=1024
 nf=6
-nt=16
+nt=14
 os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
-temperatures=10**np.linspace(5.7,7.3,num=nt+1)
+temperatures=10**np.linspace(5.7,7.1,num=nt+1)
 tresp = pd.read_csv('tresp.csv').to_numpy()
 # print(tresp_logt.keys())
 # data=np.ones([nx,ny,nf])
@@ -156,7 +158,7 @@ tresp = pd.read_csv('tresp.csv').to_numpy()
 # dem_norm=np.ones([nx,ny,nt])
 data=np.array([3.4,13.8,184,338,219.55,12.22])
 edata=np.array([0.2,0.43,7.83,12.9,5.80,0.23])
-dem_norm=np.array([ 0.082588151,0.18005607,0.30832890,0.47582966, 0.66201794,0.83059740,0.93994260,0.95951378 ,0.88358527,0.73393929, 0.54981130, 0.37136465,0.22609001 , 0.11025056,0.1,0.1])
+dem_norm=np.array([ 0.082588151,0.18005607,0.30832890,0.47582966, 0.66201794,0.83059740,0.93994260,0.95951378 ,0.88358527,0.73393929, 0.54981130, 0.37136465,0.22609001 , 0.11025056])
 # dem_norm[0,0,:]=np.arange(16)
 # dem_norm[:,0:100,0]=np.arange(100)
 # dem1d=np.reshape(dem_norm,[nx*ny,nt])
@@ -172,9 +174,9 @@ channels = np.zeros(len(wavenum))
 for i in np.arange(len(wavenum)):
     channels[i]  = float(wavenum[i])
 
-time_calibration = astropy.time.Time('2012-01-01T00:00:00', scale='utc')
+time_calibration = astropy.time.Time('2014-01-01T00:00:00', scale='utc')
 
-time_test = astropy.time.Time('2020-01-01T00:00:00', scale='utc')
+time_test = astropy.time.Time('2014-01-01T00:00:00', scale='utc')
 
 # deg_calibration = {}
 deg_calibration = np.zeros([len(channels)])
@@ -207,6 +209,6 @@ trmatrix=deg[:]*tresp_calibration
 # ax.set_ylabel('Degradation')
 # plt.show()
 
-x=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm)
+x=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm,max_iter=1)
 print(x)
 

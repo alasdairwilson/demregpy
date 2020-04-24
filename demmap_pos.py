@@ -4,6 +4,7 @@ import concurrent.futures
 from dem_inv_gsvd import dem_inv_gsvd
 from dem_reg_map import dem_reg_map
 def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
+    
     na=dd.shape[0]
     nf=rmatrix.shape[1]
     nt=logt.shape[0]
@@ -92,14 +93,13 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
 
             while((ndem > 0) and (piter < max_iter)):
                 #make L from 1/dem reg scaled by dlogt and diagonalise
-                L=np.diag(dlogt/np.sqrt(abs(dem_reg))) 
+                L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg))) 
                 #call gsvd and reg map
                 sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
                 lamb=dem_reg_map(sva,svb,U,W,dn,edn,rgt,nmu)
                 filt=np.diag(sva/(sva**2+svb**2*lamb))
                 kdag=W@(U[:nf,:nf]@filt)              
                 dem_reg_out=(kdag@dn).squeeze()
-
                 ndem=len(dem_reg_out[dem_reg_out < 0])
                 rgt=rgt_fact*rgt
                 piter+=1
@@ -115,7 +115,6 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
 
             #do error calculations on dem
             delxi2=kdag@kdag.T
-            print('3',kdag.shape)
             edem[i,:]=np.sqrt(np.diag(delxi2))
 
             kdagk=kdag@rmatrixin.T
