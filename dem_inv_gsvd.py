@@ -58,8 +58,7 @@ def dem_inv_gsvd(A,B):
     print(u.shape,onea.shape,A.shape)    #calculate the weighting matrix
     # w=inv(inv(onea)@transpose(u)@A)
     w2=pinv(inv(oneb)@v@B)
-    print('w=',w2)
-    Q=gram_schmidt_columns(Vh)
+
     
     # pprint.pprint(w)
     # pprint.pprint(w2)
@@ -67,9 +66,3 @@ def dem_inv_gsvd(A,B):
 
     #return gsvd products, transposing v as we do.
     return alpha,beta,u.T[:,0:6],v.T,w2
-# x=np.random.randn(16,6)
-# y=np.random.randn(16,16)
-
-# a,b,u,v,wt=dem_inv_gsvd(x,y)
-
-#testing gsvd prodcuts
