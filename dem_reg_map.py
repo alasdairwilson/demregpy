@@ -27,20 +27,22 @@ def dem_reg_map(sigmaa,sigmab,U,W,data,err,reg_tweak,nmu=500):
         regularization paramater
 
     """
-    
-    ndata=data.shape[0]
+ 
+
+    nf=data.shape[0]
     nreg=sigmaa.shape[0]
 
     arg=np.zeros([nreg,nmu])
     discr=np.zeros([nmu])
 
-    maxx=max(sigmaa[:ndata-1]/sigmab[:ndata-1])
-    minx=min(sigmaa[:ndata-1]/sigmab[:ndata-1])
+    sigs=sigmaa[:nf]/sigmab[:nf]
+    maxx=max(sigs)
+    minx=min(sigs)**2.0*1E-2
 
     step=(np.log(maxx)-np.log(minx))/(nmu-1.)
     mu=np.exp(np.arange(nmu)*step)*minx
-    
-    for kk in np.arange(ndata):
+    print(U[1,:])
+    for kk in np.arange(nf):
         coef=data@U[kk,:]-sigmaa[kk]
         for ii in np.arange(nmu):
             arg[kk,ii]=(mu[ii]*sigmab[kk]**2*coef/(sigmaa[kk]**2+mu[ii]*sigmab[kk]**2))**2
@@ -48,6 +50,6 @@ def dem_reg_map(sigmaa,sigmab,U,W,data,err,reg_tweak,nmu=500):
     discr=np.sum(arg,axis=0)-np.sum(err**2)*reg_tweak
   
     opt=mu[np.argmin(np.abs(discr))]
-
+    print(opt)
 
     return opt

@@ -126,19 +126,24 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,
 # Do we have an initial DEM guess/constraint to send to demmap_pos as well?
     if ( dem0.ndim==dn.ndim ):
         dem01d=np.reshape(dem0,[nx*ny,nt])
-        demmap_pos(dn1d,edn1d,rmatrix,logt,dlogt,glc,reg_tweak=reg_tweak,max_iter=max_iter,\
+        dem1d,edem1d,elogt1d,chisq1d,dn_reg1d=demmap_pos(dn1d,edn1d,rmatrix,logt,dlogt,glc,reg_tweak=reg_tweak,max_iter=max_iter,\
                 rgt_fact=rgt_fact,dem_norm0=dem01d)
     # else:
     #     demmap_pos(dn1d,edn1d,RMatrix,logt,dlogt,glc,dem1d,chisq1d,\
     #         edem1d,elogt1d,dn_reg1d,reg_tweak=reg_tweak,max_iter=max_iter,\
     #             rgt_fact=rgt_fact)
-    
+    print(nx,ny,nt,sclf)
     #reshape the 1d arrays to original dimensions and squeeze extra dimensions
-    dem=(np.reshape(dem1d,[nx,ny,nt])*sclf).squeeze()
-    edem=(np.reshape(edem1d,[nx,ny,nt])*sclf).squeeze()
+    dem=((np.reshape(dem1d,[nx,ny,nt]))*sclf).squeeze()
+    edem=((np.reshape(edem1d,[nx,ny,nt]))*sclf).squeeze()
     elogt=(np.reshape(elogt1d,[ny,nx,nt])/(2.0*np.sqrt(2.*np.log(2.)))).squeeze()
     chisq=(np.reshape(chisq1d,[ny,nx])).squeeze()
     dn_reg=(np.reshape(dn_reg1d,[nx,ny,nf])).squeeze()
+    print(dem)
+    print(edem)
+    print(elogt)
+    print(chisq)
+    print(dn_reg)
     #end the timing
     t_end = astropy.time.Time.now()
     print('total elapsed time =', astropy.time.Time(t_end-t_start,format='datetime'))
@@ -209,6 +214,7 @@ trmatrix=deg[:]*tresp_calibration
 # ax.set_ylabel('Degradation')
 # plt.show()
 
-x=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm,max_iter=1)
-print(x)
+dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm,max_iter=50)
 
+plt.plot(np.log10(temperatures[:-1]),np.log10(dem))
+plt.show()
