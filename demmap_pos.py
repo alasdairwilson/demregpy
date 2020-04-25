@@ -100,18 +100,18 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
                 lamb=dem_reg_map(sva,svb,U,W,dn,edn,rgt,nmu)
                 for kk in np.arange(nf):
                     filt[kk,kk]=(sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
-                print(W.shape,U.T.shape,filt.shape)
+
                 kdag=W@(filt.T@U[:nf,:nf])
-                print(kdag.shape,kdag)          
+     
                 dem_reg_out=(kdag@dn).squeeze()
-                print('demreg',dem_reg_out)
+
                 ndem=len(dem_reg_out[dem_reg_out < 0])
                 rgt=rgt_fact*rgt
                 piter+=1
 
             #put the fresh dem into the array of dem
             dem[i,:]=dem_reg_out
-            print('dem',dem)
+    
             #work out the theoretical dn and compare to the input dn
             dn_reg[i,:]=(rmatrix.T @ dem_reg_out).squeeze()
             residuals=(dnin-dn_reg[i,:])/ednin
@@ -123,9 +123,8 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
             edem[i,:]=np.sqrt(np.diag(delxi2))
 
             kdagk=kdag@rmatrixin.T
-            print('kdk',kdagk)
-            print('ltt',ltt,logt)
-            #errors on 
+
+            #errors
             for kk in np.arange(nt):
                 f=scipy.interpolate.interp1d(logt,kdagk.T[kk,:],kind='linear')
                 rr=f(ltt)
@@ -135,9 +134,8 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
                 if (np.sum(hm_mask) > 0):
                     elogt[i,kk]=ltt[hm_mask][-1]-ltt[hm_mask][0]
 
-            print('elt',elogt)
             if(np.mod(i,5000) == 0):
                 perc_done=i/na*100
                 print("{} of {} : {} %% complete".format(i,na,perc_done)) 
-    print(dem,edem,elogt,dn_reg)  
+  
     return dem,edem,elogt,chisq,dn_reg

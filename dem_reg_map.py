@@ -41,7 +41,6 @@ def dem_reg_map(sigmaa,sigmab,U,W,data,err,reg_tweak,nmu=500):
 
     step=(np.log(maxx)-np.log(minx))/(nmu-1.)
     mu=np.exp(np.arange(nmu)*step)*minx
-    print(U[1,:])
     for kk in np.arange(nf):
         coef=data@U[kk,:]-sigmaa[kk]
         for ii in np.arange(nmu):
@@ -50,6 +49,5 @@ def dem_reg_map(sigmaa,sigmab,U,W,data,err,reg_tweak,nmu=500):
     discr=np.sum(arg,axis=0)-np.sum(err**2)*reg_tweak
   
     opt=mu[np.argmin(np.abs(discr))]
-    print(opt)
 
     return opt

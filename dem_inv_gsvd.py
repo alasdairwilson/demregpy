@@ -46,12 +46,11 @@ def dem_inv_gsvd(A,B):
     C[:6,:14]=AB1
     #use np.linalg.svd to calculate the singular value decomposition
     u,s,v = svd(C,full_matrices=True,compute_uv=True)
-    U, S, Vh = svd(AB1, full_matrices=False)
+    # U, S, Vh = svd(AB1, full_matrices=False)
     #from the svd products calculate the diagonal components form the gsvd
     beta=1./np.sqrt(1+s**2)
     alpha=s*beta
-    print(s.shape,v.shape,u.shape)
-    print(u)
+
     #diagonalise alpha and beta into SA and SB
     onea=np.diag(alpha)
     oneb=np.diag(beta)
@@ -74,6 +73,3 @@ def dem_inv_gsvd(A,B):
 # a,b,u,v,wt=dem_inv_gsvd(x,y)
 
 #testing gsvd prodcuts
-def gram_schmidt_columns(X):
-    Q, R = np.linalg.qr(X)
-    return Q
