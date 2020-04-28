@@ -196,6 +196,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
             #do error calculations on dem
             delxi2=kdag@kdag.T
             edem[i,:]=np.sqrt(np.diag(delxi2))
+            
 
             kdagk=kdag@rmatrixin.T
 
