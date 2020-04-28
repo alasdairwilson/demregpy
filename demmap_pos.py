@@ -4,7 +4,83 @@ import concurrent.futures
 from dem_inv_gsvd import dem_inv_gsvd
 from dem_reg_map import dem_reg_map
 def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
+    """
+    demmap_pos
+    computes the dems for a 1 d array of length na with nf filters using the dn (g) counts and the temperature
+    response matrix (K) for each filter.
+    where 
+
+        g=K.DEM
+
+    Regularized approach solves this via
+  
+        ||K.DEM-g||^2 + lamb ||L.DEM||^2=min
+
+    L is a zeroth order constraint matrix and lamb is the rrgularisation parameter
+
+    The regularisation is solved via the GSVD of K and L (using dem_inv_gsvd)
+    which provides the singular values (sva,svb) and the vectors u,v and w
+    witht he properties U.T*K*W=sva*I and V.T L W = svb*I
+
+    The dem is then obtained by:
+
+        DEM_lamb = Sum_i (sva_i/(sva_i^2+svb_i^1*lamb)) * (g.u) w
+
+    or
+
+        K^-1=K^dag= Sum_i (sva_i/(sva_i^2+svb_i^1*lamb)) * u.w    
+
+    We know all the bits of it apart from lamb. We get this from the Discrepancy principle (Morozon, 1967)
+    such that the lamb chosen gives a DEM_lamb that produces a specified reduced chisq in data space which
+    we call the "regularization parameter" (or reg_tweak) and we normally take this to be 1. As we also want a
+    physically real solution (e.g. a DEM_lamb that is positive) we iteratively increase reg_tweak until a
+    positive solution is found (or a max number of iterations is reached).
+
+    Once a solution that satisfies this requirement is found the uncertainties are worked out:
+    the vertical errors (on the DEM) are obtained by propagation of errors on dn through the
+    solution; horizontal (T resolution) is how much K^dag#K deviates from I, so measuring
+    spread from diagonal but also if regularization failed at that T.
+
+    Inputs
+
+    dd
+        the dn counts for each channel
+    ed
+        the error on the dn counts
+    rmatrix
+        the trmatrix for each channel 
+    logt
+        log of the temperature bin averages
+    dlogt
+        size of the temperature bins
+    glc
+        indices of the filters for which gloci curves should be used to set the initial L constraint.
+
+    Optional inputs
+
+    reg_tweak
+        initial chisq target
+    rgt_fact
+        scale factor for the increase in chi-sqaured target for each iteration
+    max_iter
+        maximum number of times to attempt the gsvd before giving up, returns the last attempt if max_iter reached
+    dem_norm0
+        provides a "guess" dem as a starting point, if none is supplied one is created.
     
+    Outputs
+
+    
+    dem
+        The DEM(T)
+    edem
+        the error on the DEM(T)
+    elogt
+        the error on logt    
+    chisq
+        the chisq for the dem compared to the dn
+    dn_reg
+        the simulated dn for each filter for the recovered DEM    
+    """
     na=dd.shape[0]
     nf=rmatrix.shape[1]
     nt=logt.shape[0]
