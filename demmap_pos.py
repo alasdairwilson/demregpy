@@ -8,7 +8,6 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     na=dd.shape[0]
     nf=rmatrix.shape[1]
     nt=logt.shape[0]
-    print(na,nf,nt)
     #set up some arrays
     dem=np.zeros([na,nt])
     edem=np.zeros([na,nt])
@@ -116,7 +115,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
             dn_reg[i,:]=(rmatrix.T @ dem_reg_out).squeeze()
             residuals=(dnin-dn_reg[i,:])/ednin
             #work out the chisquared
-            chisq=np.sum(residuals**2)/(nf)
+            chisq[i]=np.sum(residuals**2)/(nf)
 
             #do error calculations on dem
             delxi2=kdag@kdag.T
@@ -128,7 +127,6 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
             for kk in np.arange(nt):
                 f=scipy.interpolate.interp1d(logt,kdagk.T[kk,:],kind='linear')
                 rr=f(ltt)
-                print('rr',rr)
                 hm_mask=(rr >= max(kdagk[kk,:])/2.)
                 elogt[i,kk]=dlogt[kk]
                 if (np.sum(hm_mask) > 0):
@@ -136,6 +134,6 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
 
             if(np.mod(i,5000) == 0):
                 perc_done=i/na*100
-                print("{} of {} : {} %% complete".format(i,na,perc_done)) 
+                print("{} of {} : {:.1f} % complete".format(i,na,perc_done)) 
   
     return dem,edem,elogt,chisq,dn_reg

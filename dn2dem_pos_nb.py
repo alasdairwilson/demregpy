@@ -1,20 +1,9 @@
 import numpy as np
-from matplotlib import pyplot as plt
-from demmap_pos import demmap_pos
-import pprint
 import scipy.interpolate
-import aiapy
-import aiapy.calibrate
-from aiapy.calibrate import degradation
-from aiapy.calibrate.util import get_correction_table
-import aiapy.response
-import pandas as pd
-import astropy
-from astropy import time
 import astropy.units as u
 from astropy.units import imperial
-from astropy.visualization import time_support
-import os
+from astropy import time
+from demmap_pos import demmap_pos
 imperial.enable()
 
 
@@ -107,7 +96,7 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,
     sclf=1E15
     rmatrix=rmatrix*sclf
     #time it
-    t_start = astropy.time.Time.now()
+    t_start = time.Time.now()
 
 
     dn1d=np.reshape(dn,[nx*ny,nf])
@@ -136,79 +125,9 @@ def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,
     dem=((np.reshape(dem1d,[nx,ny,nt]))*sclf).squeeze()
     edem=((np.reshape(edem1d,[nx,ny,nt]))*sclf).squeeze()
     elogt=(np.reshape(elogt1d,[ny,nx,nt])/(2.0*np.sqrt(2.*np.log(2.)))).squeeze()
-    chisq=(np.reshape(chisq1d,[ny,nx])).squeeze()
+    chisq=(np.reshape(chisq1d,[nx,ny])).squeeze()
     dn_reg=(np.reshape(dn_reg1d,[nx,ny,nf])).squeeze()
     #end the timing
-    t_end = astropy.time.Time.now()
-    print('total elapsed time =', astropy.time.Time(t_end-t_start,format='datetime'))
+    t_end = time.Time.now()
+    print('total elapsed time =', time.Time(t_end-t_start,format='datetime'))
     return dem,edem,elogt,chisq,dn_reg
-    
-
-nx=1024
-ny=1024
-nf=6
-nt=14
-os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
-temperatures=10**np.linspace(5.7,7.1,num=nt+1)
-tresp = pd.read_csv('tresp.csv').to_numpy()
-# print(tresp_logt.keys())
-# data=np.ones([nx,ny,nf])
-# edata=np.ones([nx,ny,nf])/10
-# dem_norm=np.ones([nx,ny,nt])
-data=np.array([3.4,13.8,184,338,219.55,12.22])
-edata=np.array([0.2,0.43,7.83,12.9,5.80,0.23])
-dem_norm=np.array([ 0.082588151,0.18005607,0.30832890,0.47582966, 0.66201794,0.83059740,0.93994260,0.95951378 ,0.88358527,0.73393929, 0.54981130, 0.37136465,0.22609001 , 0.11025056])
-# dem_norm[0,0,:]=np.arange(16)
-# dem_norm[:,0:100,0]=np.arange(100)
-# dem1d=np.reshape(dem_norm,[nx*ny,nt])
-# print(dem1d.shape)
-# print(dem1d[0,:])
-# dem=np.reshape(dem1d,[nx,ny,nt])
-# print(dem.shape)
-# print(dem[:,0,0])
-
-correction_table = get_correction_table()
-wavenum=['94','131','171','193','211','335']
-channels = np.zeros(len(wavenum))
-for i in np.arange(len(wavenum)):
-    channels[i]  = float(wavenum[i])
-
-time_calibration = astropy.time.Time('2014-01-01T00:00:00', scale='utc')
-
-time_test = astropy.time.Time('2014-01-01T00:00:00', scale='utc')
-
-# deg_calibration = {}
-deg_calibration = np.zeros([len(channels)])
-# deg = {}
-deg = np.zeros([len(channels)])
-
-for i,c in enumerate(channels):
-    deg_calibration[i] = degradation(c*u.angstrom,time_calibration, correction_table=correction_table)
-    deg[i] = degradation(c*u.angstrom,time_test, correction_table=correction_table)
-
-tresp_logt=tresp[:,0]
-tresp_calibration=tresp[:,1:]/deg_calibration
-trmatrix=deg[:]*tresp_calibration
-
-# time_0 = astropy.time.Time('2010-06-01T00:00:00', scale='utc')
-# now = astropy.time.Time.now()
-# time = time_0 + np.arange(0, (now - time_0).to(u.day).value, 7) * u.day
-
-# deg = {}
-# for c in channels:
-#     deg[c] = [degradation(c*u.angstrom, t, correction_table=correction_table) for t in time]
-# time_support()  # Pass astropy.time.Time directly to matplotlib
-# fig = plt.figure()
-# ax = fig.gca()
-# for i,c in enumerate(channels):
-#     ax.plot(time, deg[c])
-# ax.set_xlim(time[[0, -1]])
-# ax.legend(frameon=False, ncol=4, bbox_to_anchor=(0.5, 1), loc='lower center')
-# ax.set_xlabel('Time')
-# ax.set_ylabel('Degradation')
-# plt.show()
-
-dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm,max_iter=50)
-
-plt.plot(np.log10(temperatures[:-1]),np.log10(dem))
-plt.show()

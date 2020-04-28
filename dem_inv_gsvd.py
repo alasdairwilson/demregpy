@@ -54,15 +54,9 @@ def dem_inv_gsvd(A,B):
     #diagonalise alpha and beta into SA and SB
     onea=np.diag(alpha)
     oneb=np.diag(beta)
-    pprint.pprint(v.T)
-    print(u.shape,onea.shape,A.shape)    #calculate the weighting matrix
+     #calculate the w matrix
     # w=inv(inv(onea)@transpose(u)@A)
     w2=pinv(inv(oneb)@v@B)
-
-    
-    # pprint.pprint(w)
-    # pprint.pprint(w2)
-    # print(np.allclose(U@onea@pinv(w),A))
 
     #return gsvd products, transposing v as we do.
     return alpha,beta,u.T[:,0:6],v.T,w2
