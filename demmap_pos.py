@@ -109,6 +109,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
         'unit_scale': True,
         'leave': True
         }
+
         for f in tqdm(as_completed(futures), **kwargs):
             pass
     
@@ -118,8 +119,19 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
         elogt[i,:]=f.result()[2]
         chisq[i]=f.result()[3]
         dn_reg[i,:]=f.result()[4]
-         
-  
+
+    
+    #serial code below
+
+    # for i in tqdm(range(na)):
+    #     result=dem_pix(dd[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
+    #         reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
+    #     dem[i,:]=result[0]
+    #     edem[i,:]=result[1]
+    #     elogt[i,:]=result[2]
+    #     chisq[i]=result[3]
+    #     dn_reg[i,:]=result[4]
+        
     return dem,edem,elogt,chisq,dn_reg
 
 def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
