@@ -154,5 +154,5 @@ x2=450
 y1=700
 y2=720
 print(data.shape,edata.shape,dem_norm0.shape)
-# dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=5)
-dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=5)
+dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=5)
+# dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=5)
