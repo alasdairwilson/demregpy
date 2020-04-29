@@ -105,7 +105,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
                     for i in range(na)]
         kwargs = {
         'total': len(futures),
-        'unit': 'it',
+        'unit': 'DEM',
         'unit_scale': True,
         'leave': True
         }
