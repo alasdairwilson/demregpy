@@ -42,8 +42,9 @@ def dem_inv_gsvd(A,B):
     """  
     #calculate the matrix A*B^-1
     AB1=A@inv(B)
-    C=np.zeros([14,14])
-    C[:6,:14]=AB1
+    sze=AB1.shape
+    C=np.zeros([max(sze),max(sze)])
+    C[:sze[0],:sze[1]]=AB1
     #use np.linalg.svd to calculate the singular value decomposition
     u,s,v = svd(C,full_matrices=True,compute_uv=True)
     # U, S, Vh = svd(AB1, full_matrices=False)
@@ -59,4 +60,4 @@ def dem_inv_gsvd(A,B):
     w2=pinv(inv(oneb)@v@B)
 
     #return gsvd products, transposing v as we do.
-    return alpha,beta,u.T[:,0:6],v.T,w2
+    return alpha,beta,u.T[:,:sze[0]],v.T,w2
