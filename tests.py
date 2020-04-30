@@ -23,8 +23,8 @@ import threadpoolctl
 threadpoolctl.threadpool_limits(1)
 
 nt=14
-fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
-os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
+# fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
+# os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
 # os.chdir('C:/Users/Alasdair/Documents/reginvpy')
 # fits_dir="C:/Users/Alasdair/Documents/reginvpy/test/"
 fits_dir='/home/awilson/code/DEM/demreg-py/demreg-py/test/'

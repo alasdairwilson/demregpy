@@ -131,7 +131,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
                 dem[i_start+i,:]=result[0]
                 edem[i_start+i,:]=result[1]
                 elogt[i_start+i,:]=result[2]
-                chisq[i_start+i,:]=result[3]
+                chisq[i_start+i]=result[3]
                 dn_reg[i_start+i,:]=result[4]
         
     #else we execute in serial
