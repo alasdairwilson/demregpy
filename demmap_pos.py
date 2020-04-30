@@ -104,6 +104,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
         print('Executing in parallel using concurrent futures')
         niter=(int(np.floor((na)/n_par)))
 
+
         with ProcessPoolExecutor() as exe:
             futures=[exe.submit(dem_unwrap, dd[i*n_par:(i+1)*n_par,:],ed[i*n_par:(i+1)*n_par,:],rmatrix,logt,dlogt,glc, \
                     reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i*n_par:(i+1)*n_par,:]) \
