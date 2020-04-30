@@ -23,12 +23,12 @@ import threadpoolctl
 threadpoolctl.threadpool_limits(1)
 
 nt=14
-# fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
-# os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
+fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
+os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
 # os.chdir('C:/Users/Alasdair/Documents/reginvpy')
 # fits_dir="C:/Users/Alasdair/Documents/reginvpy/test/"
-fits_dir='/home/awilson/code/DEM/demreg-py/demreg-py/test/'
-os.chdir('/home/awilson/code/DEM/demreg-py/demreg-py/')
+# fits_dir='/home/awilson/code/DEM/demreg-py/demreg-py/test/'
+# os.chdir('/home/awilson/code/DEM/demreg-py/demreg-py/')
 temperatures=10**np.linspace(5.7,7.1,num=nt+1)
 tresp = read_csv('tresp.csv').to_numpy()
 # print(tresp_logt.keys())
@@ -159,15 +159,15 @@ for j in np.arange(nf):
     edata[:,:,j]=np.sqrt(etemp**2. + esys**2.)
 
 
-x1=200
-x2=400
-y1=500
+x1=300
+x2=500
+y1=600
 y2=800
 # pr = cProfile.Profile()
 # pr.enable()
-dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=5)
+dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=5)
 
-# dem,edem,elogt,chisq,dn_reg=dn2dem_pos_nb(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=20)
+# dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=20)
 # pr.disable()
 # s = StringIO()
 # sortby = 'cumulative'
