@@ -27,6 +27,8 @@ fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
 os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
 # os.chdir('C:/Users/Alasdair/Documents/reginvpy')
 # fits_dir="C:/Users/Alasdair/Documents/reginvpy/test/"
+fits_dir='/home/awilson/code/DEM/demreg-py/demreg-py/test/'
+os.chdir('/home/awilson/code/DEM/demreg-py/demreg-py/')
 temperatures=10**np.linspace(5.7,7.1,num=nt+1)
 tresp = read_csv('tresp.csv').to_numpy()
 # print(tresp_logt.keys())

@@ -99,8 +99,8 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     ednin=np.zeros([nf])
 
     #do we have enough dem's to make parallel make sense?
-    if (na>=128):
-        n_par = 32
+    if (na>=256):
+        n_par = 64
         print('Executing in parallel using concurrent futures')
         niter=(int(np.floor((na)/n_par)))
 
