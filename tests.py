@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from demmap_pos import demmap_pos
-from dn2dem_pos_nb import dn2dem_pos_nb
+from dn2dem_pos import dn2dem_pos
 import scipy.interpolate
 from aiapy.calibrate import degradation, register, update_pointing
 from aiapy.calibrate.util import get_correction_table

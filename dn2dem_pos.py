@@ -7,7 +7,7 @@ from demmap_pos import demmap_pos
 imperial.enable()
 
 
-def dn2dem_pos_nb(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,gloci=0,rgt_fact=1.5,dem_norm0=0):
+def dn2dem_pos(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,gloci=0,rgt_fact=1.5,dem_norm0=0):
     # Performs a Regularization on solar data, returning the Differential Emission Measure (DEM)
     # using the method of Hannah & Kontar A&A 553 2013
     # Basically getting DEM(T) out of g(f)=K(f,T)#DEM(T)
