@@ -98,40 +98,74 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     dn_reg=np.zeros([na,nf])
     ednin=np.zeros([nf])
 
-    #for each dem
-    with ProcessPoolExecutor() as exe:
-        futures=[exe.submit(dem_pix, dd[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
-                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:]) \
-                    for i in range(na)]
-        kwargs = {
-        'total': len(futures),
-        'unit': 'DEM',
-        'unit_scale': True,
-        'leave': True
-        }
+    #do we have enough dem's to make parallel make sense?
+    if (na>=128):
+        n_par = 32
+        print('Executing in parallel using concurrent futures')
+        niter=(int(np.floor((na)/n_par)))
 
-        for f in tqdm(as_completed(futures), **kwargs):
-            pass
-    
-    for i,f in enumerate(futures):
-        dem[i,:]=f.result()[0]
-        edem[i,:]=f.result()[1]
-        elogt[i,:]=f.result()[2]
-        chisq[i]=f.result()[3]
-        dn_reg[i,:]=f.result()[4]
-
-    
-    #serial code below
-
-    # for i in tqdm(range(na)):
-    #     result=dem_pix(dd[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
-    #         reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
-    #     dem[i,:]=result[0]
-    #     edem[i,:]=result[1]
-    #     elogt[i,:]=result[2]
-    #     chisq[i]=result[3]
-    #     dn_reg[i,:]=result[4]
+        with ProcessPoolExecutor() as exe:
+            futures=[exe.submit(dem_unwrap, dd[i*n_par:(i+1)*n_par,:],ed[i*n_par:(i+1)*n_par,:],rmatrix,logt,dlogt,glc, \
+                    reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i*n_par:(i+1)*n_par,:]) \
+                        for i in np.arange(niter)]
+            kwargs = {
+                'total': len(futures),
+                'unit': 'DEM',
+                'unit_scale': True,
+                'leave': True
+                }
+            for f in tqdm(as_completed(futures), **kwargs):
+                pass
+        for i,f in enumerate(futures):
+            dem[i*n_par:(i+1)*n_par,:]=f.result()[0]
+            edem[i*n_par:(i+1)*n_par,:]=f.result()[1]
+            elogt[i*n_par:(i+1)*n_par,:]=f.result()[2]
+            chisq[i*n_par:(i+1)*n_par]=f.result()[3]
+            dn_reg[i*n_par:(i+1)*n_par,:]=f.result()[4]
+        if (np.mod(na,niter*n_par) != 0):
+            i_start=niter*n_par
+            for i in range(na-i_start):
+                result=dem_pix(dd[i_start+i,:],ed[i_start+i,:],rmatrix,logt,dlogt,glc, \
+                    reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i_start+i,:])
+                dem[i_start+i,:]=result[0]
+                edem[i_start+i,:]=result[1]
+                elogt[i_start+i,:]=result[2]
+                chisq[i_start+i,:]=result[3]
+                dn_reg[i_start+i,:]=result[4]
         
+    #else we execute in serial
+    else:   
+        print('Executing in serial')
+
+        for i in tqdm(range(na)):
+            result=dem_pix(dd[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
+                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
+            dem[i,:]=result[0]
+            edem[i,:]=result[1]
+            elogt[i,:]=result[2]
+            chisq[i]=result[3]
+            dn_reg[i,:]=result[4]
+
+    return dem,edem,elogt,chisq,dn_reg
+
+def dem_unwrap(dn,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
+    #this nasty function serialises the parallel blocks
+    ndem=dn.shape[0]
+    nt=logt.shape[0]
+    nf=dn.shape[1]
+    dem=np.zeros([ndem,nt])
+    edem=np.zeros([ndem,nt])
+    elogt=np.zeros([ndem,nt])
+    chisq=np.zeros([ndem])
+    dn_reg=np.zeros([ndem,nf])
+    for i in range(ndem):
+        result=dem_pix(dn[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
+                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
+        dem[i,:]=result[0]
+        edem[i,:]=result[1]
+        elogt[i,:]=result[2]
+        chisq[i]=result[3]
+        dn_reg[i,:]=result[4]
     return dem,edem,elogt,chisq,dn_reg
 
 def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
