@@ -138,7 +138,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     else:   
         print('Executing in serial')
 
-        for i in tqdm(range(na)):
+        for i in range(na):
             result=dem_pix(dd[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
                 reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
             dem[i,:]=result[0]
@@ -274,8 +274,9 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
 
         #errors
         for kk in np.arange(nt):
-            f=scipy.interpolate.interp1d(logt,kdagk.T[kk,:],kind='linear')
-            rr=f(ltt)
+            # f=scipy.interpolate.interp1d(logt,kdagk.T[kk,:],kind='linear')
+            # rr=f(ltt)
+            rr=np.interp(ltt,logt,kdagk.T[kk,:])
             hm_mask=(rr >= max(kdagk[kk,:])/2.)
             elogt=dlogt[kk]
             if (np.sum(hm_mask) > 0):

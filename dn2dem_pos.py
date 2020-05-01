@@ -78,8 +78,9 @@ def dn2dem_pos(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,glo
 
     tr=np.zeros([nt,nf])
     for i in np.arange(nf):
-        f=scipy.interpolate.interp1d(tresp_logt,truse[:,i])
-        tr[:,i]=f(logt)
+        # f=scipy.interpolate.interp1d(tresp_logt,truse[:,i])
+        # tr[:,i]=f(logt)
+        tr[:,i]=np.interp(logt,tresp_logt,truse[:,i])
     # fig = plt.figure()
     # ax = fig.gca()
     # for i in np.arange(nf):
