@@ -253,9 +253,7 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
             lamb=dem_reg_map(sva,svb,U,W,dn,edn,rgt,nmu)
             for kk in np.arange(nf):
                 filt[kk,kk]=(sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
-            filt=filt.T
-            print('filt',filt)
-            kdag=W@(filt@U[:nf,:nf])
+            kdag=W@(filt.T@U[:nf,:nf])
     
             dem_reg_out=(kdag@dn).squeeze()
 
@@ -278,21 +276,12 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
 
 
         kdagk=kdag@rmatrixin.T
-        # print('1')
-        # print(kdag)
-        # print('2')
-        # print(W)
-        # print('2')
-        # print(filt)
-        # print('2')
-        # print(kdagk)
-        #errors
-        import matplotlib.pyplot as plt
+
         elogt=np.zeros(nt)
         for kk in np.arange(nt):
             rr=np.interp(ltt,logt,kdagk[:,kk])               
             hm_mask=(rr >= max(kdagk[:,kk])/2.)
             elogt[kk]=dlogt[kk]
             if (np.sum(hm_mask) > 0):
-                elogt[kk]=ltt[hm_mask][-1]-ltt[hm_mask][0]
+                elogt[kk]=(ltt[hm_mask][-1]-ltt[hm_mask][0])/2
     return dem,edem,elogt,chisq,dn_reg
