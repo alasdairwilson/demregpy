@@ -159,17 +159,17 @@ for j in np.arange(nf):
     edata[:,:,j]=np.sqrt(etemp**2. + esys**2.)
 
 
-# x1=300
-# x2=500
-# y1=600
-# y2=800
+x1=300
+x2=500
+y1=600
+y2=800
 x1=300
 x2=500
 y1=600
 y2=601
 pr = cProfile.Profile()
 pr.enable()
-dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
+# dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
 
 # dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=20)
 pr.disable()
