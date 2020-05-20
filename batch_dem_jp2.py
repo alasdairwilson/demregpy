@@ -142,7 +142,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     ax=plt.gca()
     ax.set_title('6 filt')
     plt.imshow(np.log10(dem[:,:,6]),vmin=19,vmax=24,origin='lower')
-    plt.show()
+    
      
     fig = plt.figure(figsize=(8, 7))
     plt.errorbar(logt_bin,dem[150,100,:],color=c,xerr=elogt[150,100,:],yerr=edem[150,100,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
@@ -165,6 +165,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     # plt.yscale('log')
     # plt.show()
     # print(elogt)
+
+    plt.show()
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
