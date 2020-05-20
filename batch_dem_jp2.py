@@ -131,11 +131,13 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #WE ARE USING DIFFERENT T RESPO PLS FIX
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
     filt_use=6
-    fig=plt.figure(figsize=(8, 7))
+    fig,axs=plt.figure(figsize=(8, 7))
     plt.imshow(np.log10(dem[:,:,6]))
+    axs[0].set_title('7 filt')
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
-    fig=plt.figure(figsize=(8, 7))
-    plt.imshow(np.log10(dem[:,:,6]))
+    fig,axs=plt.figure(figsize=(8, 7))
+    axs[0].set_title('6 filt')
+    plt.imshow(np.log10(dem[:,:,6]),vmin=18,vmax=24,origin='lower')
     plt.show()    
     # fig = plt.figure(figsize=(8, 7))
     # plt.errorbar(logt_bin,dem,color=c,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
