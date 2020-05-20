@@ -131,11 +131,11 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #WE ARE USING DIFFERENT T RESPO PLS FIX
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
     filt_use=6
-    fig = plt.figure(figsize=(8, 7))
-    plt.imshow(dem[:,:,6])
+    fig=plt.figure(figsize=(8, 7))
+    plt.imshow(np.log10(dem[:,:,6]))
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
-    fig = plt.figure(figsize=(8, 7))
-    plt.imshow(dem[:,:,6])
+    fig=plt.figure(figsize=(8, 7))
+    plt.imshow(np.log10(dem[:,:,6]))
     plt.show()    
     # fig = plt.figure(figsize=(8, 7))
     # plt.errorbar(logt_bin,dem,color=c,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
@@ -160,12 +160,14 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     # print(elogt)
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
-jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
-t_start='2014-01-01 00:00:00.000'
-cadence=1
-nobs=1
-batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir)
+
+if __name__ == "__main__":
+    fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
+    jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
+    t_start='2014-01-01 00:00:00.000'
+    cadence=1
+    nobs=1
+    batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir)
 
     # plt.show()
     # fig = plt.figure(figsize=(3*5,6*5))
