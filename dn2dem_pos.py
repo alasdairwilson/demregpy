@@ -26,7 +26,7 @@ def dn2dem_pos(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,glo
 
     #for a single pixel
     if (np.any(dem_norm0)==None):
-        dem_norm0=np.ones(np.hstack((dn_in.shape[0:-1],nt)))
+        dem_norm0=np.ones(np.hstack((dn_in.shape[0:-1],nt)).astype(int))
     if len(sze)==1:
         nx=1
         ny=1
