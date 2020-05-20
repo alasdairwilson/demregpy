@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 plt.rcParams['figure.figsize'] = [10, 9]  # make plots larger
 from astropy.time import Time, TimeDelta
 from astropy.visualization import ImageNormalize, SqrtStretch, time_support
-import sunpy.map
+from sunpy.map import Map
 from sunpy.instr.aia import aiaprep
 from sunpy.net import Fido, attrs as a
 import numpy as np
@@ -19,6 +19,8 @@ import dateutil.parser
 from pandas import read_csv
 from dn2dem_pos import dn2dem_pos
 import pdb
+import threadpoolctl
+threadpoolctl.threadpool_limits(1)
 
 
 def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4):
@@ -34,7 +36,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #find the files in their directory
     fits_files=[fits_dir+file_str[j] for j in np.arange(len(file_str))]
     #load the fits with sunpy
-    aia = sunpy.map.Map(fits_files)
+    aia = Map(fits_files)
     correction_table = get_correction_table()
     #correct the images for degradation
     aia_corrected = [correct_degradation(m, correction_table=correction_table) for m in aia]
@@ -116,42 +118,46 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #from here we have our datacube,errors,tresp and normalisation so we can call dn2dem
 
     print((np.argmax(data[:,:,6])-np.mod(np.argmax(data[:,:,6]),nx))/nx,np.mod(np.argmax(data[:,:,6]),nx))
-    fig=plt.figure()
+    # fig=plt.figure()
     # plt.imshow(np.log(data[:,:,6]),origin='lower')
     # plt.show()
 
     # aia_corrected[0].peek()
-    x1=461
-    x2=x1+1
-    y1=102
-    y2=y1+1
+    x1=0
+    x2=x1+1024
+    y1=0
+    y2=y1+1024
     filt_use=7
     #WE ARE USING DIFFERENT T RESPO PLS FIX
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
-    print(dem)
-    print(data[x1:x2,y1:y2,:filt_use])
-    print(elogt)
-    fig = plt.figure(figsize=(8, 7))
-    plt.errorbar(logt_bin,dem,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    plt.ylim([1e19,1e23])
-    plt.xlim([5.7,7.3])
-    plt.rcParams.update({'font.size': 16})
-    plt.yscale('log')
     filt_use=6
-    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,max_iter=20,dem_norm0=dem_norm0[x1:x2,y1:y2,:])
-  
     fig = plt.figure(figsize=(8, 7))
-    plt.errorbar(logt_bin,dem,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    plt.ylim([1e19,1e23])
-    plt.xlim([5.7,7.3])
-    plt.rcParams.update({'font.size': 16})
-    plt.yscale('log')
-    plt.show()
-    print(elogt)
+    plt.imshow(dem[:,:,6])
+    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
+    fig = plt.figure(figsize=(8, 7))
+    plt.imshow(dem[:,:,6])
+    plt.show()    
+    # fig = plt.figure(figsize=(8, 7))
+    # plt.errorbar(logt_bin,dem,color=c,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+    # plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+    # plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+    # plt.ylim([1e19,1e23])
+    # plt.xlim([5.7,7.3])
+    # plt.rcParams.update({'font.size': 16})
+    # plt.yscale('log')
+    # filt_use=6
+    # dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,max_iter=20)
+  
+    # fig = plt.figure(figsize=(8, 7))
+    # plt.errorbar(logt_bin,dem,color=c,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+    # plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+    # plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+    # plt.ylim([1e19,1e23])
+    # plt.xlim([5.7,7.3])
+    # plt.rcParams.update({'font.size': 16})
+    # plt.yscale('log')
+    # plt.show()
+    # print(elogt)
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'

@@ -191,7 +191,6 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
     edn=ednin/ednin
     # checking for Inf and NaN
     if ( sum(np.isnan(dn)) == 0 and sum(np.isinf(dn)) == 0 ):
-        print('test',sum(np.isnan(dn)),sum(np.isinf(dn)))
         ndem=1
         piter=0
         rgt=reg_tweak
