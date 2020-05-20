@@ -130,7 +130,14 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     filt_use=7
  
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
-    
+    fig = plt.figure(figsize=(8, 7))
+    plt.errorbar(logt_bin,dem[150,60,:],color=c,xerr=elogt[150,60,:],yerr=edem[150,60,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+    plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+    plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+    plt.ylim([1e19,1e23])
+    plt.xlim([5.7,7.3])
+    plt.rcParams.update({'font.size': 16})
+    plt.yscale('log')
     fig=plt.figure(figsize=(8, 7))
     ax=plt.gca()
     ax.set_title('7 filt')
@@ -145,7 +152,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     
      
     fig = plt.figure(figsize=(8, 7))
-    plt.errorbar(logt_bin,dem[150,100,:],color=c,xerr=elogt[150,100,:],yerr=edem[150,100,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+    plt.errorbar(logt_bin,dem[150,100,:],color=c,xerr=elogt[150,60,:],yerr=edem[150,60,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
     plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
     plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
     plt.ylim([1e19,1e23])
