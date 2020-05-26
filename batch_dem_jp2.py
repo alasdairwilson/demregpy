@@ -80,26 +80,28 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     a94_fe18=np.zeros([nx,ny])
     a94_fe18[:,:]=data[:,:,0]-data[:,:,4]/120.0-data[:,:,2]/450.0
     #threshold of fe_min for the hot component
-    fe_min=1
+    fe_min=0.5
     a94_fe18[np.where(a94_fe18 < fe_min)]=0
     data[:,:,6]=a94_fe18
     #now we need fe18 temp response in a94
-    trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.-tresp_calibrated[:,2]/450.)
+    trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.-tresp_calibrated[:,2]
+    /450.)
     trfe[trfe < 0]=0
     #remove low peak
-    trfe[tresp[:,0] < 6.5] = 0
-    tresp_calibrated[:,6]=trfe+1E-2*tresp_calibrated[:,0]
+    trfe[tresp[:,0] < 6.5] = trfe/5
+    trfe[tresp[:,0] < 6.4] = 0
+    tresp_calibrated[:,6]=trfe
     #next we do normalisation.
     #std
-    norm_std=0.2
+    norm_std=0.4
     #mean
-    norm_mean=6.38
+    norm_mean=6.55
     dem_norm = gaussian(logt_bin,norm_mean,norm_std)
     dem_norm0=np.zeros([nx,ny,nt])
     dem_norm0[:,:,:]=dem_norm 
     print(dem_norm)
     tresp_logt=tresp[:,0]
- 
+    
     serr_per=10.0
     #errors in dn/px/s
     npix=4096.**2/(nx*ny)
@@ -123,45 +125,101 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     # plt.show()
 
     # aia_corrected[0].peek()
-    x1=600
+    x1=300
     x2=x1+200
-    y1=250
+    y1=650
     y2=y1+200
     filt_use=7
- 
+    
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
-    fig = plt.figure(figsize=(8, 7))
-    plt.errorbar(logt_bin,dem[150,60,:],color=c,xerr=elogt[150,60,:],yerr=edem[150,60,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    plt.ylim([1e19,1e23])
-    plt.xlim([5.7,7.3])
-    plt.rcParams.update({'font.size': 16})
-    plt.yscale('log')
+    
+    plt.rcParams.update({'font.size': 10})
+    for j in range(4):
+        fig=plt.subplot(2,2,j+1)
+        plt.errorbar(logt_bin,dem[100,85+5*j,:],color=c,xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0) 
+        ax=plt.gca()
+        ax.set_title(str(j))
+        plt.ylim([1e19,1e23])
+        plt.xlim([5.7,7.3])
+        plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+        plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+        plt.yscale('log')
+        
+    plt.gcf().suptitle("7 filt", fontsize=14)
+
+   
+    
     fig=plt.figure(figsize=(8, 7))
-    ax=plt.gca()
-    ax.set_title('7 filt')
-    plt.imshow(np.log10(dem[:,:,6]),vmin=19,vmax=24,origin='lower')
+    for j in range(4):
+        fig=plt.subplot(2,2,j+1)
+        plt.imshow(np.log10(dem[:,:,j*3]),vmin=19,vmax=24,origin='lower')
+        ax=plt.gca()
+        ax.set_title(str(j))
+    plt.gcf().suptitle("7 filt", fontsize=14)
 
     filt_use=6
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
-    fig=plt.figure(figsize=(8, 7))
-    ax=plt.gca()
-    ax.set_title('6 filt')
-    plt.imshow(np.log10(dem[:,:,6]),vmin=19,vmax=24,origin='lower')
-    
-     
+   
     fig = plt.figure(figsize=(8, 7))
-    plt.errorbar(logt_bin,dem[150,100,:],color=c,xerr=elogt[150,60,:],yerr=edem[150,60,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    plt.ylim([1e19,1e23])
-    plt.xlim([5.7,7.3])
-    plt.rcParams.update({'font.size': 16})
-    plt.yscale('log')
-    filt_use=6
-    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,max_iter=20)
-  
+    for j in range(4):
+        fig=plt.subplot(2,2,j+1)
+        plt.errorbar(logt_bin,dem[100,85+5*j,:],color=c,xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0) 
+        ax=plt.gca()
+        ax.set_title(str(j))
+        plt.ylim([1e19,1e23])
+        plt.xlim([5.7,7.3])
+        plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+        plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+        plt.yscale('log')   
+    plt.gcf().suptitle("6 filt", fontsize=14)
+    plt.gcf().tight_layout(pad=1.0)
+
+    fig=plt.figure(figsize=(8, 7))
+    for j in range(4):
+        fig=plt.subplot(2,2,j+1)
+        plt.imshow(np.log10(dem[:,:,j*3]),vmin=19,vmax=24,origin='lower')
+        ax=plt.gca()
+        ax.set_title(str(j))
+    plt.gcf().suptitle("6 filt", fontsize=14)
+
+    filt_use=7
+    data[:,:,6]+=1E-3*data[:,:,0]
+    tresp_calibrated[:,6]=trfe+1E-3*tresp_calibrated[:,0]
+    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
+
+    fig = plt.figure(figsize=(8, 7))
+    for j in range(4):
+        fig=plt.subplot(2,2,j+1)
+        plt.errorbar(logt_bin,dem[100,85+5*j,:],color=c,xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0) 
+        ax=plt.gca()
+        ax.set_title(str(j))
+        plt.ylim([1e19,1e23])
+        plt.xlim([5.7,7.3])
+        plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+        plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+        plt.yscale('log')
+    plt.gcf().suptitle("7 filt-dirty", fontsize=14)
+
+    fig=plt.figure(figsize=(8, 7))
+    for j in range(4):
+        fig=plt.subplot(2,2,j+1)
+        plt.imshow(np.log10(dem[:,:,j*3]),vmin=19,vmax=24,origin='lower')
+        ax=plt.gca()
+        ax.set_title(str(j))
+    plt.gcf().suptitle("7 filt-dirty", fontsize=14)
+
+
+    fig=plt.figure(figsize=(8, 7))
+    for i in range(filt_use):
+        plt.plot(tresp_logt,np.log10(tresp_calibrated[:,i])) 
+        plt.xlim([5.7,7.3])
+    
+
+ 
+    
+    fig = plt.figure(figsize=(8, 7))
+    plt.errorbar(logt_bin,dem_norm0[100,100,:])
+ 
     # fig = plt.figure(figsize=(8, 7))
     # plt.errorbar(logt_bin,dem,color=c,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
     # plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
