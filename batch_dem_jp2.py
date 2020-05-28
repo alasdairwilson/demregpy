@@ -88,14 +88,15 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     /450.)
     trfe[trfe < 0]=0
     #remove low peak
-    trfe[tresp[:,0] < 6.5] = trfe/5
-    trfe[tresp[:,0] < 6.4] = 0
+    trfe[tresp[:,0] < 6.5] = trfe[tresp[:,0] < 6.5]/10
+    trfe[tresp[:,0] < 6.4] = trfe[tresp[:,0] < 6.4]/100
+    trfe[tresp[:,0] < 6.3] = 0
     tresp_calibrated[:,6]=trfe
     #next we do normalisation.
     #std
     norm_std=0.4
     #mean
-    norm_mean=6.55
+    norm_mean=6.5
     dem_norm = gaussian(logt_bin,norm_mean,norm_std)
     dem_norm0=np.zeros([nx,ny,nt])
     dem_norm0[:,:,:]=dem_norm 
