@@ -189,8 +189,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
 
     fig = plt.figure(figsize=(8, 7))
-    for j in range(4):
-        fig=plt.subplot(2,2,j+1)
+    for j in range(6):
+        fig=plt.subplot(2,3,j+1)
         plt.errorbar(logt_bin,dem[100,85+5*j,:],color=c,xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0) 
         ax=plt.gca()
         ax.set_title(str(j))
@@ -202,8 +202,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     plt.gcf().suptitle("7 filt-dirty", fontsize=14)
 
     fig=plt.figure(figsize=(8, 7))
-    for j in range(4):
-        fig=plt.subplot(2,2,j+1)
+    for j in range(6):
+        fig=plt.subplot(2,3,j+1)
         plt.imshow(np.log10(dem[:,:,j*3]),vmin=19,vmax=24,origin='lower')
         ax=plt.gca()
         ax.set_title(str(j))
