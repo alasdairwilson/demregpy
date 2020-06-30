@@ -179,6 +179,11 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
     nt=logt.shape[0]
     nmu=42
     ltt=min(logt)+1e-8+(max(logt)-min(logt))*np.arange(51)/(52-1.0)
+    dem=np.zeros(nt)
+    edem=np.zeros(nt)
+    elogt=np.zeros(nt)
+    chisq=0
+    dn_reg=np.zeros(nf)
 
     rmatrixin=np.zeros([nt,nf])
     filt=np.zeros([nf,nt])
@@ -190,7 +195,7 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
     dn=dnin/ednin
     edn=ednin/ednin
     # checking for Inf and NaN
-    if ( sum(np.isnan(dn)) == 0 and sum(np.isinf(dn)) == 0 ):
+    if ( sum(np.isnan(dn)) == 0 and sum(np.isinf(dn)) == 0 and np.prod(dn) > 0):
         ndem=1
         piter=0
         rgt=reg_tweak
