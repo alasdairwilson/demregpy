@@ -30,6 +30,7 @@ os.chdir('/mnt/c/Users/Alasdair/Documents/reginvpy')
 # fits_dir='/home/awilson/code/DEM/demreg-py/demreg-py/test/'
 # os.chdir('/home/awilson/code/DEM/demreg-py/demreg-py/')
 temperatures=10**np.linspace(5.7,7.1,num=nt+1)
+logtemps=np.linspace(5.7,7.1,num=nt+1)
 tresp = read_csv('tresp.csv').to_numpy()
 # print(tresp_logt.keys())
 # data=np.ones([nx,ny,nf])
@@ -163,18 +164,42 @@ x1=300
 x2=500
 y1=600
 y2=800
-x1=300
-x2=500
-y1=600
-y2=601
-pr = cProfile.Profile()
-pr.enable()
+
+# pr = cProfile.Profile()
+# pr.enable()
 # dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:],edata[x1:x2,y1:y2,:],trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
 
-# dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=20)
-pr.disable()
-s = StringIO()
-sortby = 'cumulative'
-ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-ps.print_stats()
-print(s.getvalue())
+dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,trmatrix,tresp_logt,temperatures,dem_norm0=dem_norm0,max_iter=20)
+
+
+logt_bin=np.zeros(nt)
+for i in np.arange(nt):
+    logt_bin[i]=(logtemps[i]+logtemps[i+1])/2
+
+fig=plt.figure(figsize=(8, 7))
+for j in range(4):
+    fig=plt.subplot(2,2,j+1)
+    plt.imshow(np.log10(dem[:,:,j*3]+1e-20),'inferno',vmin=19,vmax=24,origin='lower')
+    ax=plt.gca()
+    ax.set_title('%.1f'%(5.7+j*3*0.1))
+x=400
+y=400
+fig = plt.figure(figsize=(8, 7))
+plt.errorbar(logt_bin,dem[x,y,:],color=c,xerr=elogt[x,y,:],yerr=edem[x,y,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+ax=plt.gca()
+ax.set_title('%.1f'%(5.7+j*3*0.1))
+plt.ylim([1e19,1e23])
+plt.xlim([5.7,7.3])
+plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+plt.yscale('log')
+ax.label_outer()
+
+# pr.disable()
+# s = StringIO()
+# sortby = 'cumulative'
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# print(s.getvalue())
+
+plt.show()
