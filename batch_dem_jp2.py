@@ -19,6 +19,8 @@ import dateutil.parser
 from pandas import read_csv
 from dn2dem_pos import dn2dem_pos
 import pdb
+import os
+import wget
 import threadpoolctl
 from dataclasses import dataclass
 threadpoolctl.threadpool_limits(1)
@@ -47,7 +49,7 @@ class Dem:
     cdelt2:int=None
 
 def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4):
-
+    
     #we only want optically thin coronal wavelengths
     wavenum=['94','131','171','193','211','335']
 
@@ -56,10 +58,27 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
     #deconstruct the datetime object into a synoptica data filename
     file_str=[('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'_'+"{}".format(wave.zfill(4))+'.fits') for j,wave in enumerate(wavenum)]
+    dir_str=str(t.year).zfill(4)+'/'+str(t.month).zfill(2)+'/'+str(t.day).zfill(2)+'/'
+    syn_url='http://jsoc.stanford.edu/data/aia/synoptic/'
+   
+    
+    list1 = []
+
+    for file in file_str:
+        list1.append(os.path.isfile(fits_dir+dir_str+file))
+    print(list1)
+    if not os.path.isdir(fits_dir+dir_str):
+        os.makedirs(fits_dir+dir_str)
+    if not all(list1):
+        # not all the files exist. Run wget.
+        print('Downloading synoptic data')
+        [print(syn_url+dir_str+'H'+str(t.hour).zfill(4)+'/'+file_str[i]) for i,c in enumerate(file_str)]
+        [wget.download(syn_url+dir_str+'H'+str(t.hour).zfill(4)+'/'+file_str[i],fits_dir+dir_str) for i,c in enumerate(file_str)]
+    
     #find the files in their directory
-    fits_files=[fits_dir+file_str[j] for j in np.arange(len(file_str))]
+    fits_files=[fits_dir+dir_str+file_str[j] for j in np.arange(len(file_str))]
     #load the fits with sunpy
-    aia = Map(fits_files)
+    aia = Map(fits_files) 
     correction_table = get_correction_table()
     #correct the images for degradation
     aia_corrected = [correct_degradation(m, correction_table=correction_table) for m in aia]
@@ -214,59 +233,54 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #     ax=plt.gca()
     #     ax.set_title('%.1f'%(5.7+j*3*0.1))
     # plt.gcf().suptitle("6 filt", fontsize=14)
+
+    filt_use=7
+    dirt_fact=1E-3
+    data[:,:,6]+=dirt_fact*data[:,:,0]
+    tresp_calibrated[:,6]=trfe+dirt_fact*tresp_calibrated[:,0]
+    data[a94_fe18 < fe_min,:] = 0
     #std
     norm_std=0.3
     #mean
     norm_mean=6.35
     dem_norm = gaussian(logt_bin,norm_mean,norm_std)
     dem_norm0[:,:,:]=dem_norm  
-    filt_use=7
-    dirt_fact=1E-3
-    data[:,:,6]+=dirt_fact*data[:,:,0]
-    tresp_calibrated[:,6]=trfe+dirt_fact*tresp_calibrated[:,0]
-    data[a94_fe18 < fe_min,:] = 0
+
+
     dem2,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
     dem2[a94_fe18<fe_min]=0
     dem.data=dem1+dem2
-    dem.data[dem.data < 0]=0
-        #next we do normalisation.
-
-
-    # fig = plt.figure(figsize=(8, 7))
-    # for j in range(6):
-    #     fig=plt.subplot(2,3,j+1)
-    #     plt.errorbar(logt_bin,dem.data[100,85+5*j,:],color=c,xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    #     ax=plt.gca()
-    #     ax.set_title('%.1f'%(5.7+j*3*0.1))
-    #     plt.ylim([1e19,1e23])
-    #     plt.xlim([5.7,7.3])
-    #     plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    #     plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    #     plt.yscale('log')
-    #     ax.label_outer()
-    # plt.gcf().suptitle("7 filt-dirty", fontsize=14)
-    # plt.gcf().tight_layout(pad=2.0)
+    dem.data[dem.data <= 0]=1
 
 
 
-
-    # fig=plt.figure(figsize=(8, 7))
-    # for i in range(filt_use):
-    #     plt.plot(tresp_logt,np.log10(tresp_calibrated[:,i]))
-    #     plt.xlim([5.7,7.3])
+    fig = plt.figure(figsize=(8, 7))
+    for j in range(6):
+        fig=plt.subplot(2,3,j+1)
+        plt.errorbar(logt_bin,dem.data[400,485+5*j,:],color=c,xerr=elogt[400,485+5*j,:],yerr=edem[400,485+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+        ax=plt.gca()
+        ax.set_title('%.1f'%(5.7+j*3*0.1))
+        plt.ylim([1e19,1e23])
+        plt.xlim([5.7,7.3])
+        plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+        plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+        plt.yscale('log')
+        ax.label_outer()
+    plt.gcf().suptitle("7 filt-dirty", fontsize=14)
+    plt.gcf().tight_layout(pad=2.0)
     
     fig=plt.figure(figsize=(8, 7))
     for j in range(6):
         fig=plt.subplot(2,3,j+1)
-        plt.imshow(np.log10(dem1[:,:,j*3]+1e-20),'inferno',vmin=19,vmax=24,origin='lower')
+        plt.imshow(np.log10(dem1[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
         ax=plt.gca()
         ax.set_title('%.1f'%(5.7+j*3*0.1))
-    plt.gcf().suptitle("6", fontsize=14)
+        plt.gcf().suptitle("6", fontsize=14)
 
     fig=plt.figure(figsize=(8, 7))
     for j in range(6):
         fig=plt.subplot(2,3,j+1)
-        plt.imshow(np.log10(dem2[:,:,j*3]+1e-20),'inferno',vmin=19,vmax=24,origin='lower')
+        plt.imshow(np.log10(dem2[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
         ax=plt.gca()
         ax.set_title('%.1f'%(5.7+j*3*0.1))
     plt.gcf().suptitle("dirty", fontsize=14)
@@ -284,43 +298,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     plt.imshow(np.sqrt(dem.data[:,:,2]+1e-20),'viridis',origin='lower')
     ax=plt.gca()
     ax.set_title('%.1f'%(5.7+2*0.1))
-    # fig = plt.figure(figsize=(8, 7))
-    # for j in range(6):
-    #     fig=plt.subplot(2,3,j+1)
-    #     plt.errorbar(logt_bin,dem.data[400,385+5*j,:],color=c,xerr=elogt[400,385+5*j,:],yerr=edem[400,385+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    #     ax=plt.gca()
-    #     ax.set_title('%.1f'%(j))
-    #     plt.ylim([1e19,1e23])
-    #     plt.xlim([5.7,7.3])
-    #     plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    #     plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    #     plt.yscale('log')
-    #     ax.label_outer()
-    # plt.gcf().suptitle("6 filt", fontsize=14)
-    # plt.gcf().tight_layout(pad=2.0)
 
-
-
-    # fig=plt.figure(figsize=(8, 7))
-    # for j in range(6):
-    #     fig=plt.subplot(2,3,j+1)
-    #     plt.imshow(np.log10(dem.data[:,:,j*3]+1e-20),'inferno',vmin=19,vmax=24,origin='lower')
-    #     ax=plt.gca()
-    #     ax.set_title('%.1f'%(5.7+j*3*0.1))
-
-    # fig = plt.figure(figsize=(8, 7))
-    # plt.errorbar(logt_bin,dem_norm0[100,100,:])
-
-    # # fig = plt.figure(figsize=(8, 7))
-    # # plt.errorbar(logt_bin,dem,color=c,xerr=elogt,yerr=edem,fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-    # # plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-    # # plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-    # # plt.ylim([1e19,1e23])
-    # # plt.xlim([5.7,7.3])
-    # # plt.rcParams.update({'font.size': 16})
-    # # plt.yscale('log')
-    # # plt.show()
-    # # print(elogt)
 
     plt.show()
     return dem
@@ -330,7 +308,7 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
     jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
-    t_start='2011-03-20 20:00:00.000'
+    t_start='2018-01-01 00:00:00.000'
     cadence=1
     nobs=1
     dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=20.0)
