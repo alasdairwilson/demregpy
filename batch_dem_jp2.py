@@ -28,6 +28,10 @@ threadpoolctl.threadpool_limits(1)
 @dataclass
 class Dem:
     data:np.ndarray=None
+    edem:np.ndarray=None
+    elogt:np.ndarray=None
+    chisq:np.ndarray=None
+    dn_reg:np.ndarray=None
     minTemp:float=None
     maxTemp:float=None
     minC:np.float64=None
@@ -137,9 +141,9 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     tresp_calibrated[:,6]=trfe
     #next we do normalisation.
     #std
-    norm_std=0.3
+    norm_std=0.25
     #mean
-    norm_mean=6.35
+    norm_mean=6.4
     dem_norm = gaussian(logt_bin,norm_mean,norm_std)
     dem_norm0=np.zeros([nx,ny,nt])
     dem_norm0[:,:,:]=dem_norm
@@ -169,11 +173,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     # plt.show()
 
     # aia_corrected[0].peek()
-    x1=250
-    x2=x1+200
-    y1=650
-    y2=y1+200
-    filt_use=7
+
+
     plt.rcParams.update({'font.size': 10})
     # dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
     x1=0
@@ -205,10 +206,30 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     # plt.gcf().suptitle("7 filt", fontsize=14)
 
     dem.data=np.zeros([nx,ny,nt])
-    filt_use=6
-    dem1,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
 
-   
+    filt_use=6
+    dem.data,dem.edem,dem.elogt,dem.chisq,dem.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=15)
+    fig = plt.figure(figsize=(8, 7))
+    
+    for j in range(6):
+        fig=plt.subplot(2,3,j+1)
+        xp=400
+        yp=485+j*5
+        em_loci=data[xp,yp,:]/tresp_calibrated
+        plt.errorbar(logt_bin,dem.data[xp,yp,:],color=c,xerr=dem.elogt[xp,yp,:],yerr=dem.edem[xp,yp,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+        for i in range(6):
+            em_loci[:-1,i]=em_loci[:-1,i]/(10**tresp_logt[1:]-10**tresp_logt[:-1])
+        plt.plot(tresp_logt[:-1],em_loci[:-1,:6])
+        ax=plt.gca()
+        plt.ylim([1e19,1e23])
+        plt.xlim([5.7,7.3])
+        plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+        plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+        plt.yscale('log')
+        ax.label_outer()
+    plt.gcf().suptitle("6 Filter", fontsize=14)
+    plt.gcf().tight_layout(pad=2.0)
+    print(em_loci)
     # fig = plt.figure(figsize=(8, 7))
     # for j in range(6):
     #     fig=plt.subplot(2,3,j+1)
@@ -234,68 +255,70 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #     ax.set_title('%.1f'%(5.7+j*3*0.1))
     # plt.gcf().suptitle("6 filt", fontsize=14)
 
-    filt_use=7
-    dirt_fact=1E-3
-    data[:,:,6]+=dirt_fact*data[:,:,0]
-    tresp_calibrated[:,6]=trfe+dirt_fact*tresp_calibrated[:,0]
-    data[a94_fe18 < fe_min,:] = 0
-    #std
-    norm_std=0.3
-    #mean
-    norm_mean=6.35
-    dem_norm = gaussian(logt_bin,norm_mean,norm_std)
-    dem_norm0[:,:,:]=dem_norm  
-
-
-    dem2,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
-    dem2[a94_fe18<fe_min]=0
-    dem.data=dem1+dem2
-    dem.data[dem.data <= 0]=1
-
-
-
-    fig = plt.figure(figsize=(8, 7))
-    for j in range(6):
-        fig=plt.subplot(2,3,j+1)
-        plt.errorbar(logt_bin,dem.data[400,485+5*j,:],color=c,xerr=elogt[400,485+5*j,:],yerr=edem[400,485+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
-        ax=plt.gca()
-        ax.set_title('%.1f'%(5.7+j*3*0.1))
-        plt.ylim([1e19,1e23])
-        plt.xlim([5.7,7.3])
-        plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
-        plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
-        plt.yscale('log')
-        ax.label_outer()
-    plt.gcf().suptitle("7 filt-dirty", fontsize=14)
-    plt.gcf().tight_layout(pad=2.0)
+    # filt_use=7
+    # dirt_fact=1E-3
+    # data[:,:,6]+=dirt_fact*data[:,:,0]
+    # tresp_calibrated[:,6]=trfe+dirt_fact*tresp_calibrated[:,0]
+    # data[a94_fe18 < fe_min,:] = 0
+    # #std
+    # norm_std=0.3
+    # #mean
+    # norm_mean=6.35
+    # dem_norm = gaussian(logt_bin,norm_mean,norm_std)
+    # dem_norm0[:,:,:]=dem_norm  
     
-    fig=plt.figure(figsize=(8, 7))
-    for j in range(6):
-        fig=plt.subplot(2,3,j+1)
-        plt.imshow(np.log10(dem1[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
-        ax=plt.gca()
-        ax.set_title('%.1f'%(5.7+j*3*0.1))
-        plt.gcf().suptitle("6", fontsize=14)
+
+    # dem2,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=20)
+    # dem2[a94_fe18<fe_min]=0
+    # dem1[dem1<0]=0
+    # dem2[dem2<0]=0
+    
+
+
+  
+
+    # fig = plt.figure(figsize=(8, 7))
+    # for j in range(6):
+    #     fig=plt.subplot(2,3,j+1)
+    #     plt.errorbar(logt_bin,dem.data[400,485+5*j,:],color=c,xerr=elogt[400,485+5*j,:],yerr=edem[400,485+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+    #     ax=plt.gca()
+    #     ax.set_title('%.1f'%(5.7+j*3*0.1))
+    #     plt.ylim([1e19,1e23])
+    #     plt.xlim([5.7,7.3])
+    #     plt.xlabel('$\mathrm{\log_{10}T\;[K]}$')
+    #     plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
+    #     plt.yscale('log')
+    #     ax.label_outer()
+    # plt.gcf().suptitle("combo", fontsize=14)
+    # plt.gcf().tight_layout(pad=2.0)
+    
+    # fig=plt.figure(figsize=(8, 7))
+    # for j in range(6):
+    #     fig=plt.subplot(2,3,j+1)
+    #     plt.imshow(np.log10(dem1[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
+    #     ax=plt.gca()
+    #     ax.set_title('%.1f'%(5.7+j*3*0.1))
+    #     plt.gcf().suptitle("6", fontsize=14)
+
+    # fig=plt.figure(figsize=(8, 7))
+    # for j in range(6):
+    #     fig=plt.subplot(2,3,j+1)
+    #     plt.imshow(np.log10(dem2[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
+    #     ax=plt.gca()
+    #     ax.set_title('%.1f'%(5.7+j*3*0.1))
+    # plt.gcf().suptitle("dirty", fontsize=14)
+
 
     fig=plt.figure(figsize=(8, 7))
     for j in range(6):
         fig=plt.subplot(2,3,j+1)
-        plt.imshow(np.log10(dem2[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
-        ax=plt.gca()
-        ax.set_title('%.1f'%(5.7+j*3*0.1))
-    plt.gcf().suptitle("dirty", fontsize=14)
-    dem1[ a94_fe18 >=fe_min]=0
-    dem.data=dem1+dem2
-    fig=plt.figure(figsize=(8, 7))
-    for j in range(6):
-        fig=plt.subplot(2,3,j+1)
-        plt.imshow(np.log10(dem.data[:,:,j*3]+1e-20),'inferno',vmin=19,vmax=24,origin='lower')
+        plt.imshow(np.log10(dem.data[:,:,j*3]+1),'inferno',vmin=19,vmax=24,origin='lower')
         ax=plt.gca()
         ax.set_title('%.1f'%(5.7+j*3*0.1))
     plt.gcf().suptitle("combo", fontsize=14)
 
     fig=plt.figure(figsize=(8, 7))
-    plt.imshow(np.sqrt(dem.data[:,:,2]+1e-20),'viridis',origin='lower')
+    plt.imshow(np.sqrt(dem.data[:,:,2]+1),'viridis',origin='lower')
     ax=plt.gca()
     ax.set_title('%.1f'%(5.7+2*0.1))
 
@@ -308,7 +331,7 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
     jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
-    t_start='2018-01-01 00:00:00.000'
+    t_start='2014-05-10 00:00:00.000'
     cadence=1
     nobs=1
     dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=20.0)
