@@ -357,11 +357,15 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         for i in range(dem.nimg):
             img_data=np.flipud((dem1.data[:,:,i*2]+dem1.data[:,:,i*2+1])/2)
             jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*2],logtemps[i*2+2]))
+            tmin=logtemps[i*2]
+            tmax=logtemps[(i+1)*2]
             dem2jp2(img_data,dem,jp2_fname,i,tmin,tmax)
     if mk_jp2==True:
         for i in range(dem.nimg):
             img_data=np.flipud((dem.data[:,:,i*2]+dem1.data[:,:,i*2+1])/2)
             jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*2],logtemps[i*2+2]))
+            tmin=logtemps[i*2]
+            tmax=logtemps[(i+1)*2]
             dem2jp2(img_data,dem,'c'+jp2_fname,i,tmin,tmax)            
 
     # dem.nimg=int(np.floor(6))
@@ -379,7 +383,7 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
     jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
-    t_start='2014-01-01 00:00:00.000'
+    t_start='2016-01-01 00:00:00.000'
     cadence=1
     nobs=1
     dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=0.5,plot_out=True,plot_loci=True,mk_jp2=True)

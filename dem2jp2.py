@@ -65,7 +65,7 @@ def demxml(dem,fname,i,bin_min,bin_max):
     ET.SubElement(derivex,"img_mindata").text = '{:.1e}'.format(dem.minC)
     ET.SubElement(derivex,"img_maxdata").text = '{:.1e}'.format(dem.maxC)
     ET.SubElement(derivex,"img_scale").text = 'LOG 10'
-    ET.SubElement(derivex,"img_id").text = '{} of {}'.format(i,dem.nimg)
+    ET.SubElement(derivex,"img_id").text = '{} of {}'.format(i+1,dem.nimg)
     ET.SubElement(derivex,"github").text = 'https://github.com/alasdairwilson/demreg-py'
     ET.SubElement(derivex,"demregpy_version").text = '1.1'
     ET.SubElement(derivex,"jp2gen_version").text = '1.0'
