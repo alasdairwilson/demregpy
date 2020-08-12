@@ -1,20 +1,28 @@
 from matplotlib import pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.animation import PillowWriter
+import pickle
+
 plt.rcParams['figure.figsize'] = [10, 9]  # make plots larger
 from astropy.time import Time, TimeDelta
+from astropy import time
 from astropy.visualization import ImageNormalize, SqrtStretch, time_support
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from datetime import datetime
 from sunpy.map import Map
 import sunpy.visualization.colormaps as cm
 from sunpy.instr.aia import aiaprep
 from sunpy.net import Fido, attrs as a
+from sunpy.coordinates.sun import B0,angular_radius
+
 import numpy as np
 import pprint
+
 from aiapy.calibrate import degradation, register, update_pointing, correct_degradation
 from aiapy.calibrate.util import get_correction_table
-from astropy.coordinates import SkyCoord
-from astropy import units as u
-from astropy import time
-from astropy.visualization import ImageNormalize, SqrtStretch, time_support
 from aiapy.response import Channel
+
 import warnings
 
 import dateutil.parser
@@ -28,11 +36,14 @@ import pdb
 import os
 import wget
 import threadpoolctl
+import scipy.io as io
 
 threadpoolctl.threadpool_limits(1)
 
-def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,xp=400,yp=450):
-    
+def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,xp=750,yp=370):
+    version_number=1.1
+    contact_email='alasdair.wilson@glasgow.ac.uk'
+    location='University of Glasgow A&A'
     #we only want optically thin coronal wavelengths
     wavenum=['94','131','171','193','211','335']
     t_start=t_start
@@ -74,32 +85,39 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         aia[f]._data = aia[f]._data/aia[f].exposure_time.to(u.s).value
 
     aia_corrected=aia[:]
-    
+  
 
  
     channels = [aia[i].wavelength for i in range(nf)]
    
-    nt=14
+    nt=28
+    t_space=0.05
     t_min=5.8
-    logtemps=np.linspace(t_min,t_min+0.1*nt,num=nt+1)
+    logtemps=np.linspace(t_min,t_min+t_space*nt,num=nt+1)
     temperatures=10**logtemps
     logt_bin=np.zeros(nt)
     for i in np.arange(nt):
         logt_bin[i]=(logtemps[i]+logtemps[i+1])/2
 
-    tresp = read_csv('tresp.csv').to_numpy()
-    time_calibration = time.Time('2014-01-01T00:00:00', scale='utc')
-    deg_calibration=np.zeros([nf])
-    tresp_calibrated=np.zeros([tresp.shape[0],nf+1])
-    for i,c in enumerate(channels):
-        deg_calibration[i] = degradation(c,time_calibration, correction_table=correction_table)
-    tresp_logt=tresp[:,0]
-    tresp_calibrated[:,:-1]=tresp[:,1:]#/deg_calibration
+    tren=io.readsav('aia_trespv9_en.dat')
+    tresp_logt=tren.logt
+    tresp_calibrated=np.zeros([tresp_logt.shape[0],nf+1])
+    tresp_calibrated[:,:-1]=tren.tr.T
+
+    # print(tren)
+    # tresp = read_csv('tresp.csv').to_numpy()
+    # time_calibration = time.Time('2014-01-01T00:00:00', scale='utc')
+    # deg_calibration=np.zeros([nf])
+    # tresp_calibrated=np.zeros([tresp.shape[0],nf+1])
+    # for i,c in enumerate(channels):
+    #     deg_calibration[i] = degradation(c,time_calibration, correction_table=correction_table)
+    # tresp_logt=tresp[:,0]
+    # tresp_calibrated[:,:-1]=tresp[:,1:]/deg_calibration
 
 
     #initialise structure
     dem=Dem()
-    print(aia[0].meta)
+    dem.bitpix=8
     nx=aia[0].meta['naxis1']
     ny=aia[0].meta['naxis2']
     dem.naxis1=nx
@@ -116,12 +134,24 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     dem.dsun_obs=aia[0].meta['dsun_obs']
     dem.crlt_obs=aia[0].meta['crlt_obs']
     dem.crln_obs=aia[0].meta['crln_obs']
+    dem.hglt_obs=B0(t_obs).value
+    dem.hgln_obs=0
     dem.temperatures=temperatures
     dem.minTemp=logtemps[0]
     dem.maxTemp=logtemps[-1]
     dem.t_obs=t_obs
+    dem.filt_use=6
+    dem.rsun_ref = 6.957E+08
+    dem.rsun_obs = angular_radius(t_obs).value
+    dem.hv_zero=np.log10(dem.minC)
+    dem.hv_scale=(np.log10(dem.maxC)-np.log10(dem.minC))/255
+    dem.contact=contact_email
+    dem.produced='Produced at '+location+' on: '+datetime.today().strftime('%Y-%m-%d')
+    dem.dem_ver=version_number
+
 
     dem1=Dem()
+    dem1.bitpix=8
     dem1.naxis1=nx
     dem1.naxis2=ny
     dem1.crota2=aia[0].meta['crota2']   
@@ -136,8 +166,18 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     dem1.dsun_obs=aia[0].meta['dsun_obs']
     dem1.crlt_obs=aia[0].meta['crlt_obs']
     dem1.crln_obs=aia[0].meta['crln_obs']
+    dem1.hglt_obs=B0(t_obs).value
+    dem1.hgln_obs=0
     dem1.minTemp=logtemps[0]
     dem1.maxTemp=logtemps[-1]
+    dem1.filt_use=7
+    dem1.rsun_ref = 6.957E+08
+    dem1.rsun_obs = np.rad2deg(np.arctan2(dem1.rsun_ref, dem1.dsun_obs))*3600
+    dem1.hv_zero=np.log10(dem1.minC)
+    dem1.hv_scale=(np.log10(dem1.maxC)-np.log10(dem1.minC))/255
+    dem1.contact=contact_email
+    dem1.produced='Produced at '+location+' on: '+datetime.today().strftime('%Y-%m-%d')
+    dem1.dem_ver=version_number
     
 
     #The following code is heavily AIA 6 channel based, we calculate the iron 18 contribution to the a94 channel and separate it.
@@ -148,10 +188,10 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
     #next we do normalisation.
     #std
-    norm_std=0.25
+    norm_std=0.3
     #mean
-    norm_mean=6.45
-    # dem_norm=np.ones(nt)
+    norm_mean=6.3
+    # dem_norm=np.ones(nt)h
     dem_norm = gaussian(logt_bin,norm_mean,norm_std)
     dem_norm0=np.zeros([nx,ny,nt])
     dem_norm0[:,:,:]=dem_norm
@@ -167,7 +207,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     a94_fe18[a94_fe18<=0]=0.01
     a94_warm[a94_warm<=0]=0.01
     data[:,:,6]=a94_fe18
-    data[:,:,0]=a94_warm
+    data[:,:,0]=a94_warm#+a94_fe18
     fig=plt.figure()
     plt.imshow(a94_warm,origin='lower')
     fig=plt.figure()
@@ -177,20 +217,22 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     # aia[0].peek()
   
     #now we need fe18 temp response in a94
-    trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.-tresp_calibrated[:,2]/450.)
-    trfe[tresp[:,0] <= 6.4]=0
-    trfe+=0.001*tresp_calibrated[:,0]
+    
+    trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.0-tresp_calibrated[:,2]/450.0)
+    trfe[tresp_logt <= 6.4]=1e-34
     #remove low peak
 
     tresp_calibrated[:,6]=trfe
-    tresp_calibrated[:,0]=tresp_calibrated[:,0]-trfe    
+    tresp_calibrated[:,0]=tresp_calibrated[:,0]-0.99*trfe
+    tresp_calibrated[tresp_calibrated[:,0]<=1e-33]=1e-33
+    # tresp_calibrated[tresp[:,0] >= 6.5,0]=  tresp_calibrated[tresp[:,0] >= 6.5,0] * 1e-2 
     fig=plt.figure()
     plt.plot(tresp_logt,np.log10(tresp_calibrated))
     fig=plt.figure()
     plt.plot(tresp_logt,np.log10(tresp_calibrated[:,0]))
     plt.plot(tresp_logt,np.log10(tresp_calibrated[:,6]))
 
-    serr_per=10.0
+    serr_per=8.0
     #errors in dn/px/s
     npix=4096.**2/(nx*ny)
     edata=np.zeros([nx,ny,nf+1])
@@ -204,10 +246,10 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         esys=serr_per*data[:,:,j]/100.
         edata[:,:,j]=np.sqrt(etemp**2. + esys**2.)
     #errors on fe18 are trickier...
-    edata[:,:,6]=serr_per/100*data[:,:,6]+1.0
+    edata[:,:,6]=serr_per/100*data[:,:,6]+5
     #from here we have our datacube,errors,tresp and normalisation so we can call dn2dem
 
-    print((np.argmax(data[:,:,6])-np.mod(np.argmax(data[:,:,6]),nx))/nx,np.mod(np.argmax(data[:,:,6]),nx))
+    # print((np.argmax(data[:,:,6])-np.mod(np.argmax(data[:,:,6]),nx))/nx,np.mod(np.argmax(data[:,:,6]),nx))
     # fig=plt.figure()
     # plt.imshow(np.log(data[:,:,6]),origin='lower')
     # plt.show()
@@ -223,7 +265,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
     # for j in range(4):
     #     fig=plt.subplot(2,2,j+1)
-    #     plt.errorbar(logt_bin,dem[100,85+5*j,:],color=c,xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+    #     plt.errorbar(logt_bin,dem[100,85+5*j,:],color='c',xerr=elogt[100,85+5*j,:],yerr=edem[100,85+5*j,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
     #     ax=plt.gca()
     #     ax.set_title(str(j))
     #     plt.ylim([1e19,1e23])
@@ -246,14 +288,15 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
     filt_use=6
     dem1.data,dem1.edem,dem1.elogt,dem1.chisq,dem1.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,dem.temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=25)
+    dem1.data[a94_fe18>=fe_min,:]=0
     if plot_out==True:
         aia_col=['#c2c3c0','#g0r0r0']
         fig = plt.figure(figsize=(8, 7))
-        for j in range(int(nt)):
+        for j in range(int(nt/2)):
             fig=plt.subplot(4,4,j+1)
 
             em_loci=data[xp,yp,:]/tresp_calibrated
-            plt.errorbar(logt_bin,dem1.data[xp,yp+j*10,:],color=c,xerr=dem1.elogt[xp,yp+j*10,:],yerr=dem1.edem[xp,yp+j*10,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+            plt.errorbar(logt_bin,dem1.data[xp,yp+j*5,:],color='c',xerr=dem1.elogt[xp,yp+j*5,:],yerr=dem1.edem[xp,yp+j*5,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
             for i in range(7):
                 em_loci[:-1,i]=em_loci[:-1,i]/(10**tresp_logt[1:]-10**tresp_logt[:-1])
             if plot_loci==True:
@@ -269,11 +312,11 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         plt.gcf().tight_layout(pad=2.0)
 
         fig=plt.figure(figsize=(8, 7))
-        for j in range(int(nt)):
+        for j in range(int(nt/2)):
             fig=plt.subplot(4,4,j+1)
-            plt.imshow(np.log10(dem1.data[:,:,j]+1),'inferno',vmin=19,vmax=24,origin='lower')
+            plt.imshow(np.log10(dem1.data[:,:,2*j]+1),'inferno',vmin=19,vmax=24,origin='lower')
             ax=plt.gca()
-            ax.set_title('%.1f'%(t_min+j*0.1))
+            ax.set_title('%.1f'%(t_min+2*j*0.05))
         plt.gcf().suptitle("dem1", fontsize=14)
 
 
@@ -281,25 +324,31 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
 
 
-   
-    filt_use=7
+ 
+    filt_use=6
+    data[a94_fe18<fe_min,:]=0
+    # data[:,:,0]=a94_warm
+    #standard deviation
+    norm_std=0.4
+    #mean
+    norm_mean=6.45
+    dem_norm = gaussian(logt_bin,norm_mean,norm_std)
+    dem_norm0=np.zeros([nx,ny,nt])
+    dem_norm0[:,:,:]=dem_norm
     dem.data,dem.edem,dem.elogt,dem.chisq,dem.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=25)
 
     if plot_out==True:
-        fig=plt.figure()
-        plt.plot(tresp_logt,tresp_calibrated)
-        plt.xlim([5.7,7.3])
         aia_col=['#c2c3c0','#g0r0r0']
         fig = plt.figure(figsize=(8, 7))
-        for j in range(int(np.floor(nt))):
+        for j in range(int(np.floor(nt/2))):
             fig=plt.subplot(4,4,j+1)
 
             em_loci=data[xp,yp,:]/tresp_calibrated
-            plt.errorbar(logt_bin,dem.data[xp,yp+j*10,:],color=c,xerr=dem.elogt[xp,yp+j*10,:],yerr=dem.edem[xp,yp+j*10,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+            plt.errorbar(logt_bin,dem.data[xp,yp+j*5,:],color='c',xerr=dem.elogt[xp,yp+j*5,:],yerr=dem.edem[xp,yp+j*5,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
             for i in range(7):
                 em_loci[:-1,i]=em_loci[:-1,i]/(10**tresp_logt[1:]-10**tresp_logt[:-1])
             if plot_loci==True:
-                plt.plot(tresp_logt[:-1],em_loci[:-1,:7])
+                plt.plot(tresp_logt[:-1],em_loci[:-1,:6])
             ax=plt.gca()
             plt.ylim([1e19,1e23])
             plt.xlim([5.7,7.3])
@@ -307,28 +356,33 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             plt.ylabel('$\mathrm{DEM\;[cm^{-5}\;K^{-1}]}$')
             plt.yscale('log')
             ax.label_outer()
-        plt.gcf().suptitle("7 Filter", fontsize=14)
+        plt.gcf().suptitle("7", fontsize=14)
         plt.gcf().tight_layout(pad=2.0)
 
         fig=plt.figure(figsize=(8, 7))
-        for j in range(int(nt)):
+        for j in range(int(nt/2)):
             fig=plt.subplot(4,4,j+1)
-            plt.imshow(np.log10(dem.data[:,:,j]+1),'inferno',vmin=19,vmax=24,origin='lower')
+            plt.imshow(np.log10(dem.data[:,:,j*2]+1),'inferno',vmin=19,vmax=24,origin='lower')
             ax=plt.gca()
-            ax.set_title('%.1f'%(t_min+j*0.1))
-        plt.gcf().suptitle("7 filt", fontsize=14)
+            ax.set_title('%.1f'%(t_min+j*2*0.05))
+        plt.gcf().suptitle("7", fontsize=14)
+        plt.gcf().tight_layout(pad=2.0)
 
-    # dem1.data[a94_fe18>fe_min,:]=0
-    dem.data=(dem1.data+dem.data)/2
-
+    dem1.data[a94_fe18>=fe_min,:]=0
+    dem.data=dem.data+dem1.data
+    dem1.elogt[a94_fe18>=fe_min,:]=0
+    dem.elogt=dem.elogt+dem1.elogt
+    dem1.edem[a94_fe18>=fe_min,:]=0
+    dem.edem=dem.edem+dem1.edem
+    dem.data[dem.data<=1.0]=1.0
     if plot_out==True:
         aia_col=['#c2c3c0','#g0r0r0']
         fig = plt.figure(figsize=(8, 7))
-        for j in range(int(np.floor(nt))):
+        for j in range(int(np.floor(nt/2))):
             fig=plt.subplot(4,4,j+1)
 
             em_loci=data[xp,yp,:]/tresp_calibrated
-            plt.errorbar(logt_bin,dem.data[xp,yp+j*10,:],color=c,xerr=dem.elogt[xp,yp+j*10,:],yerr=dem.edem[xp,yp+j*10,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
+            plt.errorbar(logt_bin,dem.data[xp,yp+j*5,:],color='c',xerr=dem.elogt[xp,yp+j*5,:],yerr=dem.edem[xp,yp+j*5,:],fmt='or',ecolor='gray', elinewidth=3, capsize=0)
             for i in range(7):
                 em_loci[:-1,i]=em_loci[:-1,i]/(10**tresp_logt[1:]-10**tresp_logt[:-1])
             if plot_loci==True:
@@ -344,29 +398,31 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         plt.gcf().tight_layout(pad=2.0)
 
         fig=plt.figure(figsize=(8, 7))
-        for j in range(int(nt)):
+        for j in range(int(nt/2)):
             fig=plt.subplot(4,4,j+1)
-            plt.imshow(np.log10(dem.data[:,:,j]+1),'inferno',vmin=19,vmax=24,origin='lower')
+            plt.imshow(np.log10(dem.data[:,:,j*2]+1),'inferno',vmin=19,vmax=24,origin='lower')
             ax=plt.gca()
-            ax.set_title('%.1f'%(t_min+j*0.1))
-        plt.gcf().suptitle("combo", fontsize=14)
+            ax.set_title('%.1f'%(t_min+j*2*0.05))
+        plt.gcf().suptitle("Combo", fontsize=14)
+        plt.gcf().tight_layout(pad=2.0)
         aia[0].peek()
         plt.show()
-    dem.nimg=int(np.floor(nt/2))
+    dem.nimg=int(np.floor(nt/4))
     if mk_jp2==True:
         for i in range(dem.nimg):
-            img_data=np.flipud((dem1.data[:,:,i*2]+dem1.data[:,:,i*2+1])/2)
-            jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*2],logtemps[i*2+2]))
+            img_data=np.flipud((dem1.data[:,:,i*2]+dem1.data[:,:,i*2+1]+dem1.data[:,:,i*2+2]+dem1.data[:,:,i*2+3])/4)
+            jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*4],logtemps[i*4+4]))
             tmin=logtemps[i*2]
             tmax=logtemps[(i+1)*2]
-            dem2jp2(img_data,dem,jp2_fname,i,tmin,tmax)
+            dem2jp2(img_data,dem,jp2_fname,i,tmin,tmax,mk_fits=False)
     if mk_jp2==True:
         for i in range(dem.nimg):
-            img_data=np.flipud((dem.data[:,:,i*2]+dem1.data[:,:,i*2+1])/2)
-            jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*2],logtemps[i*2+2]))
+            img_data=np.flipud((dem.data[:,:,i*2]+dem.data[:,:,i*2+1]+dem.data[:,:,i*2+2]+dem.data[:,:,i*2+3])/4)
+            jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*4],logtemps[i*4+4]))
             tmin=logtemps[i*2]
             tmax=logtemps[(i+1)*2]
-            dem2jp2(img_data,dem,'c'+jp2_fname,i,tmin,tmax)            
+            dem2jp2(img_data,dem,'c'+jp2_fname,i,tmin,tmax,mk_fits=False)
+                    
 
     # dem.nimg=int(np.floor(6))
     # if mk_jp2==True:
@@ -374,38 +430,38 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #         img_data=(dem.data[:,:,i*3]+dem.data[:,:,(i*3)+1]+dem.data[:,:,(i*3)+2])/3
     #         jp2_fname=('AIA'+str(t.year).zfill(4)+str(t.month).zfill(2)+str(t.day).zfill(2)+'_'+str(t.hour).zfill(2)+str(t.minute).zfill(2)+'.'+str(t.second).zfill(2)+'_dem_reginv_T_'+'%.2f-%.2f'%(logtemps[i*3],logtemps[i*3+3]))
     #         dem2jp2(img_data,dem,'b'+jp2_fname,i)
-         
-
     return dem
+
+
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 if __name__ == "__main__":
     fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
     jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
-    t_start='2016-01-01 00:00:00.000'
+    t_start='2014-01-01 00:00:00.000'
     cadence=1
     nobs=1
-    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=0.5,plot_out=True,plot_loci=True,mk_jp2=True)
-
-    # plt.show()
-    # fig = plt.figure(figsize=(3*5,6*5))
-    # for i, (m, mc) in enumerate(zip(aia, aia_corrected)):
-    #     norm = ImageNormalize(vmin=0,vmax=np.mean(mc.data)*10,stretch=SqrtStretch())
-    #     ax = fig.add_subplot(2, len(aia), i+1, projection=m)
-    #     m.plot(axes=ax, norm=norm, annotate=False)
-    #     ax.set_title(m.wavelength)
-    #     ax.coords[0].set_ticks_visible(False)
-    #     ax.coords[0].set_ticklabel_visible(False)
-    #     ax.coords[1].set_ticks_visible(False)
-    #     ax.coords[1].set_ticklabel_visible(False)
-    #     ax = fig.add_subplot(2, len(aia), i+1+len(aia), projection=mc)
-    #     mc.plot(axes=ax, norm=norm, annotate=False,)
-    #     ax.coords[0].set_ticks_visible(False)
-    #     ax.coords[0].set_ticklabel_visible(False)
-    #     ax.coords[1].set_ticks_visible(False)
-    #     ax.coords[1].set_ticklabel_visible(False)
-    # plt.show()
+    dem=Dem()
+    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,plot_out=True,plot_loci=True,mk_jp2=True)
+    pout='dem_saved.pickle'
+    # with open(pout,'wb') as f:
+    #     pickle.dump(dem, f)
     
+    fig=plt.figure()
+    ax=plt.gca()
+    ims=[]
+    im=plt.imshow(np.log10(dem.data[:,:,0]),'inferno',vmin=19.7,vmax=23,origin='lower',animated=True)
+    cbar = fig.colorbar(im, ticks=[19.7, 21, 22,23])
+    cbar.ax.set_yticklabels(['< 5E19', '1E21','1E22',' > 1E23'])
+    cbar.set_label('$cm^{-5}K^{-1}$')
+    for i in np.arange(28):
+        im=plt.imshow(np.log10(dem.data[:,:,i]),'inferno',vmin=19.7,vmax=24,origin='lower',animated=True)
+        ttl = plt.text(0.5, 1.01, t_start+' logT = %.2f'%(5.8+0.05*i), horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
+        ims.append([im,ttl])
+    ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
+    writer = animation.PillowWriter(fps=5)
+    ani.save("demo.gif", writer=writer)
+
 
 
