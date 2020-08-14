@@ -40,7 +40,14 @@ import scipy.io as io
 
 threadpoolctl.threadpool_limits(1)
 
-def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,xp=750,yp=370):
+def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,xp=370,yp=750):
+    """
+    batch script for loading (or downloading) synoptic data from jsoc, setting up the AIA degradation and temperature response etc.
+    running demregpy to produce 2-d DEM maps. Finally the code has optional very basic plotting routines and an optional call to
+    dem2jp2 to make jpeg2000 greyscale, bytescaled 8 bit images for hv. 
+
+
+    """
     version_number=1.1
     contact_email='alasdair.wilson@glasgow.ac.uk'
     location='University of Glasgow A&A'
@@ -207,7 +214,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     a94_fe18[a94_fe18<=0]=0.01
     a94_warm[a94_warm<=0]=0.01
     data[:,:,6]=a94_fe18
-    data[:,:,0]=a94_warm#+a94_fe18
+    # data[:,:,0]=a94_warm#+a94_fe18
     fig=plt.figure()
     plt.imshow(a94_warm,origin='lower')
     fig=plt.figure()
@@ -223,7 +230,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
     #remove low peak
 
     tresp_calibrated[:,6]=trfe
-    tresp_calibrated[:,0]=tresp_calibrated[:,0]-0.99*trfe
+    tresp_calibrated[:,0]=tresp_calibrated[:,0]#-0.99*trfe
     tresp_calibrated[tresp_calibrated[:,0]<=1e-33]=1e-33
     # tresp_calibrated[tresp[:,0] >= 6.5,0]=  tresp_calibrated[tresp[:,0] >= 6.5,0] * 1e-2 
     fig=plt.figure()

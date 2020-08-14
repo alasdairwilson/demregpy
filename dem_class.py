@@ -3,6 +3,13 @@ import numpy as np
 from astropy.time import Time
 @dataclass
 class Dem:
+    """
+    This is a data class for a DEM intended for use with demreg-py
+
+    entries are fairlt self explanatory, most entries are direct counterparts to FITS header metadata containing information on pointing etc.
+    Much of the rest are to do with the DEM set up or the dem output. Some entries (such as minC, nimg or hv_scale) are purely to do with jpeg2000 
+    generation for helioviewer and can be safely 
+    """
     data:np.ndarray=None
     edem:np.ndarray=None
     elogt:np.ndarray=None
