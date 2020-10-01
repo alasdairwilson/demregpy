@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.animation import PillowWriter
 
+
 plt.rcParams['figure.figsize'] = [10, 9]  # make plots larger
 from astropy.time import Time, TimeDelta, TimeString
 from astropy.visualization import ImageNormalize, SqrtStretch, time_support

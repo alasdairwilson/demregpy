@@ -6,5 +6,8 @@
 *.eps
 *.jp2
 *.gif
+*.png
 test.py
+test1.py
+*.zip
 workspace*
