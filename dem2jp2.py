@@ -67,6 +67,11 @@ def demxml(dem,fname,i,bin_min,bin_max):
     # ET.SubElement(fitsx, "HV_ZERO").text = '{:.2f}'.format(np.log10(dem.minC))
     # ET.SubElement(fitsx, "HV_SCALE").text = '{:.2f}'.format((np.log10(dem.maxC)-np.log10(dem.minC))/255)
     ET.SubElement(fitsx, "BITPIX").text = '{:}'.format(dem.bitpix)
+    ET.SubElement(fitsx, "OBSERVATORY").text = 'derived-data'
+    ET.SubElement(fitsx, "INSTRUMENT").text = 'DEM'
+    ET.SubElement(fitsx, "DETECTOR").text = 'demregpy'
+    ET.SubElement(fitsx, "TELESCOP").text = 'derived-DEM'
+    ET.SubElement(fitsx, "INSTRUME").text = 'LOGT {:.2e}-{:.2e}'.format(bin_min,bin_max)
     ET.SubElement(fitsx, "T_OBS").text = dem.t_obs.isot+'Z'
     ET.SubElement(fitsx, "DATE-OBS").text = dem.t_obs.isot
     ET.SubElement(fitsx, "NAXIS").text = '2'
