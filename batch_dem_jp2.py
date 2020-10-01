@@ -1,7 +1,6 @@
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.animation import PillowWriter
-import pickle
 
 plt.rcParams['figure.figsize'] = [10, 9]  # make plots larger
 from astropy.time import Time, TimeDelta, TimeString
@@ -20,8 +19,6 @@ from sunpy.coordinates.sun import B0,angular_radius
 import numpy as np
 
 import pprint
-
-from scipy.signal import savgol_filter
 
 from aiapy.calibrate import degradation, register, update_pointing, correct_degradation
 from aiapy.calibrate.util import get_correction_table

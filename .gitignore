@@ -4,5 +4,7 @@
 /.vscode
 *.fits
 *.eps
+*.jp2
+*.gif
 test.py
 workspace*
