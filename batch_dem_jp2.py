@@ -398,13 +398,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             plt.gcf().suptitle("7", fontsize=14)
             plt.gcf().tight_layout(pad=2.0)
 
-        dem1.data[a94_fe18>=fe_min,:]=0
-        dem.data=dem.data+dem1.data
-        dem1.elogt[a94_fe18>=fe_min,:]=0
-        dem.elogt=dem.elogt+dem1.elogt
-        dem1.edem[a94_fe18>=fe_min,:]=0
-        dem.edem=dem.edem+dem1.edem
-        dem.data[dem.data<=1.0]=1.0
+
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
             fig = plt.figure(figsize=(8, 7))
@@ -439,6 +433,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             plt.show()
         dem.nimg=int(np.floor(nt/4))
         if mk_jp2==True:
+            if not os.path.isdir(jp2_dir+dir_str):
+                os.makedirs(jp2_dir+dir_str)
             for i in range(dem.nimg):
                 img_data=np.flipud((dem.data[:,:,i*2]+dem.data[:,:,i*2+1]+dem.data[:,:,i*2+2]+dem.data[:,:,i*2+3])/4)
                 jp2_fname=(str(t.year).zfill(4)+'_'+str(t.month).zfill(2)+'_'+str(t.day).zfill(2)+'__'+str(t.hour).zfill(2)+'_'+str(t.minute).zfill(2)+'_'+str(t.second).zfill(2)+'_00'+'__DEM_REGINV_T_'+'%.2f_%.2f'%(logtemps[i*4],logtemps[i*4+4]))
@@ -471,6 +467,7 @@ if __name__ == "__main__":
     cbar = fig.colorbar(im, ticks=[19.7, 21, 22,23])
     cbar.ax.set_yticklabels(['< 5E19', '1E21','1E22',' > 1E23'])
     cbar.set_label('$cm^{-5}K^{-1}$')
+
     for i in np.arange(28):
         im=plt.imshow(np.log10(dem.data[:,:,i]),'inferno',vmin=19.7,vmax=24,origin='lower',animated=True)
         ttl = plt.text(0.5, 1.01, t_start+' logT = %.2f'%(5.8+0.05*i), horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
