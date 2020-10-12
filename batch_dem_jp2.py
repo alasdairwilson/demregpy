@@ -37,7 +37,8 @@ from dem_class import Dem
 import pdb
 import os
 import wget
-import httplib2
+import requests
+# import httplib2
 import threadpoolctl
 import scipy.io as io
 
@@ -83,10 +84,11 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             print('Downloading synoptic data')
             url=[(syn_url+dir_str+'H'+str(t.hour).zfill(2)+'00'+'/'+file_str[jj]) for jj,c in enumerate(file_str)]
             for jj,c in enumerate(file_str):
-                h = httplib2.Http()
+                # h = httplib2.Http()
                 # open the webpage
-                resp = h.request(url[jj], 'HEAD')
-                if int(resp[0]['status']) < 400:
+                # resp = h.request(url[jj], 'HEAD')
+                request = requests.get(url[jj])
+                if request.status_code < 400:
                     # webpage exists so download
                     wget.download(url[jj],fits_dir+dir_str)
             cklist=[]
