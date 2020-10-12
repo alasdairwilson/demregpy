@@ -444,6 +444,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
                 jp2_fname=(str(t.year).zfill(4)+'_'+str(t.month).zfill(2)+'_'+str(t.day).zfill(2)+'__'+str(t.hour).zfill(2)+'_'+str(t.minute).zfill(2)+'_'+str(t.second).zfill(2)+'_00'+'__DEM_REGINV_T_'+'%.2f_%.2f'%(logtemps[i*4],logtemps[i*4+4]))
                 tmin=logtemps[i*4]
                 tmax=logtemps[(i+1)*4]
+                print('writing '+jp2_fname + ' img ' + str(i+1) +' of '+str(dem.nimg))
                 dem2jp2(img_data,dem,jp2_fname,i,tmin,tmax,mk_fits=False)
     return dem
 
