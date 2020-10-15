@@ -44,7 +44,7 @@ import scipy.io as io
 
 threadpoolctl.threadpool_limits(1)
 
-def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,xp=370,yp=750):
+def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,mk_fits=False,xp=370,yp=750):
     """
     batch script for loading (or downloading) synoptic data from jsoc, setting up the AIA degradation and temperature response etc.
     running demregpy to produce 2-d DEM maps. Finally the code has optional very basic plotting routines and an optional call to
@@ -238,13 +238,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         a94_warm[a94_warm<=0]=0.01
         data[:,:,6]=a94_fe18
         # data[:,:,0]=a94_warm#+a94_fe18
-        fig=plt.figure()
-        plt.imshow(a94_warm,origin='lower')
-        fig=plt.figure()
-        plt.imshow(a94_fe18,origin='lower')
-        fig=plt.figure()
-        plt.imshow(np.log10(a94_fe18+a94_warm),origin='lower')
-        # aia[0].peek()
+
+ 
     
         #now we need fe18 temp response in a94
         
@@ -256,12 +251,6 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         # tresp_calibrated[:,0]=tresp_calibrated[:,0]-0.99*trfe
         # tresp_calibrated[tresp_calibrated[:,0]<=1e-33]=1e-33
         # tresp_calibrated[tresp[:,0] >= 6.5,0]=  tresp_calibrated[tresp[:,0] >= 6.5,0] * 1e-2 
-        fig=plt.figure()
-        plt.plot(tresp_logt,np.log10(tresp_calibrated))
-        fig=plt.figure()
-        plt.plot(tresp_logt,np.log10(tresp_calibrated[:,0]))
-        plt.plot(tresp_logt,np.log10(tresp_calibrated[:,6]))
-        
         serr_per=12.0
         #errors in dn/px/s
         npix=4096.**2/(nx*ny)
@@ -441,7 +430,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
                 tmin=logtemps[i*4]
                 tmax=logtemps[(i+1)*4]
                 print('writing '+jp2_fname + ' img ' + str(i+1) +' of '+str(dem.nimg))
-                dem2jp2(img_data,dem,jp2_fname,i,tmin,tmax,mk_fits=False)
+                dem2jp2(img_data,dem,jp2_dir+dir_str+jp2_fname,i,tmin,tmax,mk_fits=mk_fits)
     return dem
 
 
@@ -449,13 +438,13 @@ def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 if __name__ == "__main__":
-    fits_dir='/mnt/c/Users/Alasdair/Documents/reginvpy/test/'
-    jp2_dir='/mnt/c/Alasdair/Documents/reginvpy/test/'
+    fits_dir='/mnt/h/fits/'
+    jp2_dir='/mnt/h/data/'
     t_start='2011-01-01 00:00:00.000'
     cadence=60
     nobs=3
     dem=Dem()
-    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,plot_out=True,plot_loci=True,mk_jp2=True)
+    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,plot_out=False,plot_loci=True,mk_jp2=True,mk_fits=True)
     pout='dem_saved.pickle'
     # with open(pout,'wb') as f:
     #     pickle.dump(dem, f)
@@ -472,9 +461,6 @@ if __name__ == "__main__":
         im=plt.imshow(np.log10(dem.data[:,:,i]),'inferno',vmin=19.7,vmax=24,origin='lower',animated=True)
         ttl = plt.text(0.5, 1.01, t_start+' logT = %.2f'%(5.8+0.05*i), horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
         ims.append([im,ttl])
-    ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
-    writer = animation.PillowWriter(fps=5)
-    ani.save("demo.gif", writer=writer)
-
-
-
+    # ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
+    # writer = animation.PillowWriter(fps=5)
+    # ani.save("demo.gif", writer=writer)
