@@ -53,6 +53,8 @@ def dem2jp2(img_data,dem,fname,i,bin_min,bin_max,mk_fits=False):
         demdict["method"]="Regularised Inversion (Hannah and Kontar 2012)"
         demdict["dem_unit"] = 'cm-5 K-1'
         demdict["contact"] ='alasdair.wilson@glasgow.ac.uk'
+        if os.isfile(fname+'.fits'):
+            os.remove(fname+'.fits')
         io.fits.write(fname+'.fits',bytesc,demdict)   
         #add the header to the jp2 file.
     return

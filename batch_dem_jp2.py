@@ -44,7 +44,7 @@ import scipy.io as io
 
 threadpoolctl.threadpool_limits(1)
 
-def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,mk_fits=False,xp=370,yp=750):
+def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,min_snr=2,fe_min=2,use_fe=False,sat_lvl=1.5e4,mk_jp2=False,plot_out=False,plot_loci=False,mk_fits=False,xp=370,yp=750):
     """
     batch script for loading (or downloading) synoptic data from jsoc, setting up the AIA degradation and temperature response etc.
     running demregpy to produce 2-d DEM maps. Finally the code has optional very basic plotting routines and an optional call to
@@ -244,14 +244,14 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         #now we need fe18 temp response in a94
         
         trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.0-tresp_calibrated[:,2]/450.0)
-        trfe[tresp_logt <= 6.4]=1e-33
+        trfe[tresp_logt <= 6.4]=1e-35
         #remove low peak
 
         tresp_calibrated[:,6]=trfe
-        # tresp_calibrated[:,0]=tresp_calibrated[:,0]-0.99*trfe
+        tresp_calibrated[:,0]=tresp_calibrated[:,0]-0.99*trfe
+        data[:,:,6]+=0.01*data[:,:,0]
         # tresp_calibrated[tresp_calibrated[:,0]<=1e-33]=1e-33
         # tresp_calibrated[tresp[:,0] >= 6.5,0]=  tresp_calibrated[tresp[:,0] >= 6.5,0] * 1e-2 
-        serr_per=12.0
         #errors in dn/px/s
         npix=4096.**2/(nx*ny)
         edata=np.zeros([nx,ny,nf+1])
@@ -316,12 +316,12 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
 
 
-    
-        filt_use=6
+        if use_fe==True:
+            filt_use=7
         # data[a94_fe18<fe_min,:]=0
         # data[:,:,0]=a94_warm
         #standard deviation
-        norm_std=0.25
+        norm_std=0.35
         #mean
         norm_mean=6.3
         dem_norm = gaussian(logt_bin,norm_mean,norm_std)
@@ -354,7 +354,11 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             plt.gcf().suptitle("DEM NORM", fontsize=14)
             plt.gcf().tight_layout(pad=2.0)
 
+        if use_fe==True:
+            data[a94_fe18<fe_min,:]=0
         dem.data,dem.edem,dem.elogt,dem.chisq,dem.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=15)
+        if use_fe==True:
+            dem.data[a94_fe18<fe_min,:]=dem1.data[a94_fe18<fe_min,:]
 
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
@@ -440,11 +444,11 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/h/fits/'
     jp2_dir='/mnt/h/data/'
-    t_start='2011-01-01 00:00:00.000'
+    t_start='2020-09-01 17:02:00.000'
     cadence=60
-    nobs=3
+    nobs=1
     dem=Dem()
-    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,plot_out=False,plot_loci=True,mk_jp2=True,mk_fits=True)
+    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,use_fe=True,plot_out=False,plot_loci=True,mk_jp2=True,mk_fits=True)
     pout='dem_saved.pickle'
     # with open(pout,'wb') as f:
     #     pickle.dump(dem, f)
