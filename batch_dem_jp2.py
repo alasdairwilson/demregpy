@@ -359,6 +359,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         dem.data,dem.edem,dem.elogt,dem.chisq,dem.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=15)
         if use_fe==True:
             dem.data[a94_fe18<fe_min,:]=dem1.data[a94_fe18<fe_min,:]
+        dem.data[dem.data<=0]=1e-10
 
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
