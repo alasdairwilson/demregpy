@@ -111,14 +111,6 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         aia = [correct_degradation(m, correction_table=correction_table,calibration_version=cal_ver) for m in aia]
         aia = [update_pointing(m) for m in aia]
 
-
-        for f in range(nf):
-            aia[f]._data = aia[f]._data/aia[f].exposure_time.to(u.s).value
-
-        aia_corrected=aia[:]
-    
-
-    
         channels = [aia[i].wavelength for i in range(nf)]
     
         nt=28
@@ -134,17 +126,6 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         tresp_logt=tren.logt
         tresp_calibrated=np.zeros([tresp_logt.shape[0],nf+1])
         tresp_calibrated[:,:-1]=tren.tr.T
-
-        # print(tren)
-        # tresp = read_csv('tresp.csv').to_numpy()
-        # time_calibration = time.Time('2014-01-01T00:00:00', scale='utc')
-        # deg_calibration=np.zeros([nf])
-        # tresp_calibrated=np.zeros([tresp.shape[0],nf+1])
-        # for i,c in enumerate(channels):
-        #     deg_calibration[i] = degradation(c,time_calibration, correction_table=correction_table)
-        # tresp_logt=tresp[:,0]
-        # tresp_calibrated[:,:-1]=tresp[:,1:]/deg_calibration
-
 
         #initialise structure
         dem=Dem()
@@ -210,49 +191,12 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         dem1.produced='Produced at '+location+' on: '+datetime.today().strftime('%Y-%m-%d')
         dem1.dem_ver=version_number
         
-
-        #The following code is heavily AIA 6 channel based, we calculate the iron 18 contribution to the a94 channel and separate it.
         data=np.zeros([nx,ny,nf+1])
-        #convert from our list to an array of data
-        for j in range(nf):
-            data[:,:,j]=aia_corrected[j].data
+       
 
-        #next we do normalisation.
-        #std
-        norm_std=0.35
-        #mean
-        norm_mean=6.35
-        # dem_norm=np.ones(nt)h
-        dem_norm = gaussian(logt_bin,norm_mean,norm_std)
-        dem_norm0=np.zeros([nx,ny,nt])
-        dem_norm0[:,:,:]=dem_norm
-        #calculate the hot component of aia 94
-        a94_fe18=np.zeros([nx,ny])
-        a94_warm=np.zeros([nx,ny])
-        a94_fe18[:,:]=data[:,:,0]-data[:,:,4]/120.0-data[:,:,2]/450.0
-        a94_warm=data[:,:,0]-a94_fe18[:,:]
-        
-        #threshold of fe_min for the hot component
 
-        a94_fe18[a94_fe18<=0]=0.01
-        a94_warm[a94_warm<=0]=0.01
-        data[:,:,6]=a94_fe18
-        # data[:,:,0]=a94_warm#+a94_fe18
 
- 
-    
-        #now we need fe18 temp response in a94
-        
-        trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.0-tresp_calibrated[:,2]/450.0)
-        trfe[tresp_logt <= 6.4]=1e-35
-        #remove low peak
-
-        tresp_calibrated[:,6]=trfe
-        tresp_calibrated[:,0]=tresp_calibrated[:,0]-0.99*trfe
-        data[:,:,6]+=0.01*data[:,:,0]
-        # tresp_calibrated[tresp_calibrated[:,0]<=1e-33]=1e-33
-        # tresp_calibrated[tresp[:,0] >= 6.5,0]=  tresp_calibrated[tresp[:,0] >= 6.5,0] * 1e-2 
-        #errors in dn/px/s
+        #errors in dn/px
         npix=4096.**2/(nx*ny)
         edata=np.zeros([nx,ny,nf+1])
         gains=np.array([18.3,17.6,17.7,18.3,18.3,17.6])
@@ -260,25 +204,56 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         rdnse=1.15*np.sqrt(npix)/npix
         drknse=0.17
         qntnse=0.288819*np.sqrt(npix)/npix
+        for f in range(nf):
+            #convert from our list to an array of data
+            data[:,:,f]=aia[f].data
         for j in np.arange(nf):
-            etemp=np.sqrt(rdnse**2.+drknse**2.+qntnse**2.+(dn2ph[j]*abs(data[:,:,j]))/(npix*dn2ph[j]**2))
-            esys=serr_per*data[:,:,j]/100.
-            edata[:,:,j]=np.sqrt(etemp**2. + esys**2.)
-        #errors on fe18 are trickier...
-        edata[:,:,6]=serr_per/100*data[:,:,6]+2.0
-        #from here we have our datacube,errors,tresp and normalisation so we can call dn2dem
+            shotnoise=(dn2ph[j]*data[:,:,j])**0.5/dn2ph[j]
+            esys=serr_per/100.0*data[:,:,j]
+            etemp=np.sqrt(rdnse**2.+drknse**2.+qntnse**2.+shotnoise**2)
+            edata[:,:,j]=np.sqrt(esys**2+etemp**2)
 
+        for f in range(nf):
+            #convert to values per second
+
+            data[:,:,f]=data[:,:,f]/aia[f].exposure_time.to(u.s).value
+            edata[:,:,f]=edata[:,:,f]/aia[f].exposure_time.to(u.s).value
+
+            
+
+                #calculate the hot component of aia 94
+        a94_fe18=np.zeros([nx,ny])
+        a94_warm=np.zeros([nx,ny])
+        a94_fe18[:,:]=data[:,:,0]-data[:,:,4]/120.0-data[:,:,2]/450.0
+        a94_warm=data[:,:,0]-a94_fe18[:,:]
         
+        #threshold of fe_min for the hot component
 
+        a94_fe18[a94_fe18<=0]=0.0001
+        a94_warm[a94_warm<=0]=0.0001
+        data[:,:,6]=a94_fe18
+    
+        #now we need fe18 temp response in a94
+        trfe= (tresp_calibrated[:,0]-tresp_calibrated[:,4]/120.0-tresp_calibrated[:,2]/450.0)
+        trfe[tresp_logt <= 6.4]=1e-38
+        #remove low peak
+
+        tresp_calibrated[:,6]=trfe+1e-3*tresp_calibrated[:,0]
+        #errors on fe18 are a little arbitary, percentage error and a flat of 2...
+        edata[:,:,6]=serr_per/100*data[:,:,6]+2.0
         plt.rcParams.update({'font.size': 10})
         # dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
         x1=0
         x2=nx
         y1=0
         y2=ny
-
         filt_use=6
-        dem1.data,dem1.edem,dem1.elogt,dem1.chisq,dem1.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,dem.temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=10)
+        norm_mean=6.35
+        norm_std=0.35
+        dem_norm0=np.zeros([nx,ny,nt])
+        dem_norm=gaussian(logt_bin,norm_mean,norm_std)
+        dem_norm0[:,:,:]=dem_norm[:]
+        dem1.data,dem1.edem,dem1.elogt,dem1.chisq,dem1.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,dem.temperatures,max_iter=15,dem_norm0=dem_norm0)
         
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
@@ -318,19 +293,13 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
         if use_fe==True:
             filt_use=7
-        # data[a94_fe18<fe_min,:]=0
-        # data[:,:,0]=a94_warm
-        #standard deviation
-        norm_std=0.35
-        #mean
-        norm_mean=6.3
-        dem_norm = gaussian(logt_bin,norm_mean,norm_std)
+
         dem_norm0=np.zeros([nx,ny,nt])
         mxdem=np.max(dem1.data)
         for ii in np.arange(nx):
             for jj in np.arange(ny):
-                dem_norm0[ii,jj,:]=(np.convolve(dem1.data[ii,jj,1:-1],np.ones(5)/5))[1:-1]*dem_norm/mxdem
-        dem_norm0[dem_norm0<=1e-6]=1e-6
+                dem_norm0[ii,jj,:]=(np.convolve(dem1.data[ii,jj,1:-1],np.ones(5)/5))[1:-1]/mxdem
+        dem_norm0[dem_norm0<=1e-12]=1e-12
 
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
@@ -359,7 +328,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         dem.data,dem.edem,dem.elogt,dem.chisq,dem.dn_reg=dn2dem_pos(data[x1:x2,y1:y2,:filt_use],edata[x1:x2,y1:y2,:filt_use],tresp_calibrated[:,:filt_use],tresp_logt,temperatures,dem_norm0=dem_norm0[x1:x2,y1:y2,:],max_iter=15)
         if use_fe==True:
             dem.data[a94_fe18<fe_min,:]=dem1.data[a94_fe18<fe_min,:]
-        dem.data[dem.data<=0]=1e-10
+        dem.data[dem.data<=0]=1
 
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
@@ -445,11 +414,11 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/h/fits/'
     jp2_dir='/mnt/h/data/'
-    t_start='2020-09-01 17:02:00.000'
+    t_start='2014-01-01 00:02:00.000'
     cadence=60
     nobs=1
     dem=Dem()
-    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,use_fe=True,plot_out=False,plot_loci=True,mk_jp2=True,mk_fits=True)
+    dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,use_fe=False,plot_out=False,plot_loci=True,mk_jp2=True,mk_fits=True)
     pout='dem_saved.pickle'
     # with open(pout,'wb') as f:
     #     pickle.dump(dem, f)
@@ -466,6 +435,6 @@ if __name__ == "__main__":
         im=plt.imshow(np.log10(dem.data[:,:,i]),'inferno',vmin=19.7,vmax=24,origin='lower',animated=True)
         ttl = plt.text(0.5, 1.01, t_start+' logT = %.2f'%(5.8+0.05*i), horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
         ims.append([im,ttl])
-    # ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
-    # writer = animation.PillowWriter(fps=5)
-    # ani.save("demo.gif", writer=writer)
+    ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
+    writer = animation.PillowWriter(fps=5)
+    ani.save("demo.gif", writer=writer)
