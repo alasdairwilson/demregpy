@@ -20,7 +20,7 @@ class Dem:
     minTemp:float=None
     maxTemp:float=None
     minC:np.float64=5e19
-    maxC:np.float64=5e23
+    maxC:np.float64=1e23
     hv_zero:np.float64=None
     hv_scale:np.float64=None
     datamax:int=255
