@@ -155,8 +155,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         dem.filt_use=6
         dem.rsun_ref = 6.957E+08
         dem.rsun_obs = angular_radius(t_obs).value
-        dem.hv_zero=np.log10(dem.minC)
-        dem.hv_scale=(np.log10(dem.maxC)-np.log10(dem.minC))/255
+        dem.hv_zero=np.log10(dem.dem_min)
+        dem.hv_scale=(np.log10(dem.dem_max)-np.log10(dem.dem_min))/255
         dem.contact=contact_email
         dem.produced='Produced at '+location+' on: '+datetime.today().strftime('%Y-%m-%d')
         dem.dem_ver=version_number
@@ -185,8 +185,8 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         dem1.filt_use=7
         dem1.rsun_ref = 6.957E+08
         dem1.rsun_obs = np.rad2deg(np.arctan2(dem1.rsun_ref, dem1.dsun_obs))*3600
-        dem1.hv_zero=np.log10(dem1.minC)
-        dem1.hv_scale=(np.log10(dem1.maxC)-np.log10(dem1.minC))/255
+        dem1.hv_zero=np.log10(dem1.dem_min)
+        dem1.hv_scale=(np.log10(dem1.dem_max)-np.log10(dem1.dem_min))/255
         dem1.contact=contact_email
         dem1.produced='Produced at '+location+' on: '+datetime.today().strftime('%Y-%m-%d')
         dem1.dem_ver=version_number
@@ -215,13 +215,12 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
         for f in range(nf):
             #convert to values per second
-
             data[:,:,f]=data[:,:,f]/aia[f].exposure_time.to(u.s).value
             edata[:,:,f]=edata[:,:,f]/aia[f].exposure_time.to(u.s).value
 
             
 
-                #calculate the hot component of aia 94
+        #calculate the hot component of aia 94
         a94_fe18=np.zeros([nx,ny])
         a94_warm=np.zeros([nx,ny])
         a94_fe18[:,:]=data[:,:,0]-data[:,:,4]/120.0-data[:,:,2]/450.0
