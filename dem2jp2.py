@@ -11,8 +11,8 @@ def dem2jp2(img_data,dem,fname,i,bin_min,bin_max,mk_fits=False):
     #log 10 the data
     datasc=np.log10(img_data+1)
     #take logs of our data range
-    logmin=np.log10(dem.minC)
-    logmax=np.log10(dem.maxC)
+    logmin=np.log10(dem.dem_min)
+    logmax=np.log10(dem.dem_max)
     #floor the data to datamin
     datasc[datasc < logmin]=logmin
     #ceiling the data to datamax
@@ -53,6 +53,11 @@ def dem2jp2(img_data,dem,fname,i,bin_min,bin_max,mk_fits=False):
         demdict["method"]="Regularised Inversion (Hannah and Kontar 2012)"
         demdict["dem_unit"] = 'cm-5 K-1'
         demdict["contact"] ='alasdair.wilson@glasgow.ac.uk'
+        demdict["detector"] = 'demregpy'
+        demdict["ctype1"] = 'HPLN-TAN'
+        demdict["ctype2"] = 'HPLT-TAN'  
+        demdict["instrume"] = 'LOGT {:.2f}-{:.2f}'.format(bin_min,bin_max)
+        demdict["filters"] ='AIA94 AIA131 AIA171 AIA193 AIA211 AIA335'
         if os.path.isfile(fname+'.fits'):
             os.remove(fname+'.fits')
         io.fits.write(fname+'.fits',bytesc,demdict)   
@@ -66,14 +71,14 @@ def demxml(dem,fname,i,bin_min,bin_max):
     derivex = ET.SubElement(heliox,"derived_data")
     
     # ET.SubElement(fitsx, "BUNIT").text = 'LOG 10 cm^-5 K^-1'
-    # ET.SubElement(fitsx, "HV_ZERO").text = '{:.2f}'.format(np.log10(dem.minC))
-    # ET.SubElement(fitsx, "HV_SCALE").text = '{:.2f}'.format((np.log10(dem.maxC)-np.log10(dem.minC))/255)
+    # ET.SubElement(fitsx, "HV_ZERO").text = '{:.2f}'.format(np.log10(dem.dem_min))
+    # ET.SubElement(fitsx, "HV_SCALE").text = '{:.2f}'.format((np.log10(dem.dem_max)-np.log10(dem.dem_min))/255)
     ET.SubElement(fitsx, "BITPIX").text = '{:}'.format(dem.bitpix)
     ET.SubElement(fitsx, "OBSERVATORY").text = 'derived-data'
     ET.SubElement(fitsx, "INSTRUMENT").text = 'DEM'
     ET.SubElement(fitsx, "DETECTOR").text = 'demregpy'
     ET.SubElement(fitsx, "TELESCOP").text = 'derived-DEM'
-    ET.SubElement(fitsx, "INSTRUME").text = 'LOGT {:.2e}-{:.2e}'.format(bin_min,bin_max)
+    ET.SubElement(fitsx, "INSTRUME").text = 'LOGT {:.2f}-{:.2f}'.format(bin_min,bin_max)
     ET.SubElement(fitsx, "T_OBS").text = dem.t_obs.isot+'Z'
     ET.SubElement(fitsx, "DATE-OBS").text = dem.t_obs.isot
     ET.SubElement(fitsx, "NAXIS").text = '2'
@@ -81,6 +86,8 @@ def demxml(dem,fname,i,bin_min,bin_max):
     ET.SubElement(fitsx, "NAXIS2").text = '{:}'.format(dem.naxis2)
     ET.SubElement(fitsx, "CDELT1").text = '{:}'.format(dem.cdelt1)
     ET.SubElement(fitsx, "CDELT2").text = '{:}'.format(dem.cdelt2)
+    ET.SubElement(fitsx, "CTYPE1").text = 'HPLN-TAN'
+    ET.SubElement(fitsx, "CTYPE2").text = 'HPLT-TAN'   
     ET.SubElement(fitsx, "CRPIX1").text = '{:}'.format(dem.crpix1)
     ET.SubElement(fitsx, "CRPIX2").text = '{:}'.format(dem.crpix2)
     ET.SubElement(fitsx, "CUNIT1").text = '{:}'.format(dem.cunit1)
@@ -101,13 +108,13 @@ def demxml(dem,fname,i,bin_min,bin_max):
 
     ET.SubElement(derivex,"qnty").text = "DEM(T)"
     ET.SubElement(derivex,"method").text = "Regularised Inversion (Hannah and Kontar 2012)"
-    ET.SubElement(derivex,"filters").text = str(dem.filt_use)
+    ET.SubElement(derivex,"filters").text = 'AIA94 AIA131 AIA171 AIA193 AIA211 AIA335'
     ET.SubElement(derivex,"trange").text = '{:1}-{:1}'.format(dem.minTemp,dem.maxTemp)
     ET.SubElement(derivex,"trangek").text = '{:.2e}-{:.2e}'.format(10**dem.minTemp,10**dem.maxTemp)
     ET.SubElement(derivex,"t_bin").text = '{:.2e}-{:.2e}'.format(bin_min,bin_max)
     ET.SubElement(derivex,"dem_unit").text = 'cm-5 K-1'
-    ET.SubElement(derivex,"minC").text = '{:.1e}'.format(dem.minC)
-    ET.SubElement(derivex,"maxC").text = '{:.1e}'.format(dem.maxC)
+    ET.SubElement(derivex,"dem_min").text = '{:.1e}'.format(dem.dem_min)
+    ET.SubElement(derivex,"dem_max").text = '{:.1e}'.format(dem.dem_max)
     ET.SubElement(derivex,"img_sc").text = 'LOG 10'
     ET.SubElement(derivex,"img_id").text = '{} of {}'.format(i+1,dem.nimg)
     ET.SubElement(derivex,"github").text = 'https://github.com/alasdairwilson/demreg-py'
@@ -119,8 +126,8 @@ def demxml(dem,fname,i,bin_min,bin_max):
 #info for mouseover values
     ET.SubElement(heliox, "BUNIT").text = 'LOG10 cm-5 K-1'
     ET.SubElement(heliox, "DATAMAX").text = '255'
-    ET.SubElement(heliox, "HV_ZERO").text = '{:.2f}'.format(np.log10(dem.minC))
-    ET.SubElement(heliox, "HV_SCALE").text = '{:.2f}'.format((np.log10(dem.maxC)-np.log10(dem.minC))/255)
+    ET.SubElement(heliox, "HV_ZERO").text = '{:.2f}'.format(np.log10(dem.dem_min))
+    ET.SubElement(heliox, "HV_SCALE").text = '{:.2f}'.format((np.log10(dem.dem_max)-np.log10(dem.dem_min))/255)
 
 
 
