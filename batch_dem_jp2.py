@@ -398,7 +398,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             if not os.path.isdir(jp2_dir+dir_str):
                 os.makedirs(jp2_dir+dir_str)
             for i in range(dem.nimg):
-                img_data=np.flipud((dem.data[:,:,i*2]+dem.data[:,:,i*2+1]+dem.data[:,:,i*2+2]+dem.data[:,:,i*2+3])/4)
+                img_data=(dem.data[:,:,i*2]+dem.data[:,:,i*2+1]+dem.data[:,:,i*2+2]+dem.data[:,:,i*2+3])/4
                 jp2_fname=(str(t.year).zfill(4)+'_'+str(t.month).zfill(2)+'_'+str(t.day).zfill(2)+'__'+str(t.hour).zfill(2)+'_'+str(t.minute).zfill(2)+'_'+str(t.second).zfill(2)+'_00'+'__DEM_REGINV_T_'+'%.2f_%.2f'%(logtemps[i*4],logtemps[i*4+4]))
                 tmin=logtemps[i*4]
                 tmax=logtemps[(i+1)*4]

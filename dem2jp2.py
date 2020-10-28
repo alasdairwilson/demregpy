@@ -22,7 +22,7 @@ def dem2jp2(img_data,dem,fname,i,bin_min,bin_max,mk_fits=False):
     #convert to unsigned byte
     bytesc=img_as_ubyte(datasc)
     #create the jp2 file
-    jp2=glymur.Jp2k(fname+'.jp2',bytesc)
+    jp2=glymur.Jp2k(fname+'.jp2',np.flipud(bytesc))
     #create the header
     demxml(dem,fname,i,bin_min,bin_max)
     #load the header
