@@ -55,7 +55,8 @@ def dem2jp2(img_data,dem,fname,i,bin_min,bin_max,mk_fits=False):
         demdict["contact"] ='alasdair.wilson@glasgow.ac.uk'
         demdict["detector"] = 'demregpy'
         demdict["ctype1"] = 'HPLN-TAN'
-        demdict["ctype2"] = 'HPLT-TAN'  
+        demdict["ctype2"] = 'HPLT-TAN'
+        demdict["TELESCOP"] = 'derived-DEM'  
         demdict["instrume"] = 'LOGT {:.2f}-{:.2f}'.format(bin_min,bin_max)
         demdict["filters"] ='AIA94 AIA131 AIA171 AIA193 AIA211 AIA335'
         if os.path.isfile(fname+'.fits'):
