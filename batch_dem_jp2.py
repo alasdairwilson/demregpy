@@ -97,16 +97,27 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
                 cklist.append(os.path.isfile(fits_dir+dir_str+file))
             if not all(cklist):
                 #skipping this observation
-                print('Missing data for '+str(t)+'...Skipping to next...')
+                print('\n Missing synoptioc data for '+str(t)+'...Skipping to next...')
+                
                 continue
         
         #find the files in their directory
         fits_files=[fits_dir+dir_str+file_str[j] for j in np.arange(len(file_str))]
         #load the fits with sunpy
         aia = Map(fits_files) 
+        if aia[0].meta['percentd']<95.0:
+            #check if the percentage data > 95 otherwise skip next observation
+            print('\n PERCENTAGE GOOD DATA BELOW THRESHOLD = '+str(aia[0].meta['percentd'])+' at '+str(t)+'\n...Skipping to next...')
+            dem=Dem()
+            continue
+        if aia[2].meta['datamax']<1e3:
+            #check if the data is there, sometimes synoptic outputs maps of noise only if the observation not taken, we just threshold aia 171 at 1k DN
+            print('\n Image looks like noise, possibly broken synoptic maps? Datamax = '+str(aia[2].meta['datamax'])+' at '+str(t)+'\n...Skipping to next...')
+            dem=Dem()
+            continue           
         correction_table = get_correction_table()
         # correction_table=get_correction_table('aiapy/aiapy/tests/data/aia_V8_20171210_050627_response_table.txt')  
-        cal_ver=9
+        cal_ver=10
         #correct the images for degradation
         aia = [correct_degradation(m, correction_table=correction_table,calibration_version=cal_ver) for m in aia]
         aia = [update_pointing(m) for m in aia]
@@ -413,27 +424,27 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/h/fits/'
     jp2_dir='/mnt/h/data/'
-    t_start='2014-01-01 00:02:00.000'
-    cadence=60
-    nobs=1
+    t_start='2016-05-09 21:00:00.000'
+    cadence=60*60
+    nobs=5
     dem=Dem()
     dem=batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,fe_min=5,use_fe=False,plot_out=False,plot_loci=True,mk_jp2=True,mk_fits=True)
     pout='dem_saved.pickle'
     # with open(pout,'wb') as f:
     #     pickle.dump(dem, f)
     
-    fig=plt.figure()
-    ax=plt.gca()
-    ims=[]
-    im=plt.imshow(np.log10(dem.data[:,:,0]),'inferno',vmin=19.7,vmax=23,origin='lower',animated=True)
-    cbar = fig.colorbar(im, ticks=[19.7, 21, 22,23])
-    cbar.ax.set_yticklabels(['< 5E19', '1E21','1E22',' > 1E23'])
-    cbar.set_label('$cm^{-5}K^{-1}$')
+    # fig=plt.figure()
+    # ax=plt.gca()
+    # ims=[]
+    # im=plt.imshow(np.log10(dem.data[:,:,0]),'inferno',vmin=19.7,vmax=23,origin='lower',animated=True)
+    # cbar = fig.colorbar(im, ticks=[19.7, 21, 22,23])
+    # cbar.ax.set_yticklabels(['< 5E19', '1E21','1E22',' > 1E23'])
+    # cbar.set_label('$cm^{-5}K^{-1}$')
 
-    for i in np.arange(28):
-        im=plt.imshow(np.log10(dem.data[:,:,i]),'inferno',vmin=19.7,vmax=24,origin='lower',animated=True)
-        ttl = plt.text(0.5, 1.01, t_start+' logT = %.2f'%(5.8+0.05*i), horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
-        ims.append([im,ttl])
-    ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
-    writer = animation.PillowWriter(fps=5)
-    ani.save("demo.gif", writer=writer)
+    # for i in np.arange(28):
+    #     im=plt.imshow(np.log10(dem.data[:,:,i]),'inferno',vmin=19.7,vmax=24,origin='lower',animated=True)
+    #     ttl = plt.text(0.5, 1.01, t_start+' logT = %.2f'%(5.8+0.05*i), horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
+    #     ims.append([im,ttl])
+    # ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,repeat_delay=500)
+    # writer = animation.PillowWriter(fps=5)
+    # ani.save("demo.gif", writer=writer)
