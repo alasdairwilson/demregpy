@@ -117,7 +117,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             continue           
         correction_table = get_correction_table()
         # correction_table=get_correction_table('aiapy/aiapy/tests/data/aia_V8_20171210_050627_response_table.txt')  
-        cal_ver=10
+        #cal_ver=10
         #correct the images for degradation
         aia = [correct_degradation(m, correction_table=correction_table,calibration_version=cal_ver) for m in aia]
         aia = [update_pointing(m) for m in aia]
@@ -424,7 +424,7 @@ def gaussian(x, mu, sig):
 if __name__ == "__main__":
     fits_dir='/mnt/h/fits/'
     jp2_dir='/mnt/h/data/'
-    t_start='2016-05-09 21:00:00.000'
+    t_start='2016-05-12 18:00:00.000'
     cadence=60*60
     nobs=5
     dem=Dem()
