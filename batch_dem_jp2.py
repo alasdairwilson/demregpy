@@ -116,7 +116,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             dem=Dem()
             continue           
         # correction_table = get_correction_table()
-        correction_table=get_correction_table('aiapy/aiapy/tests/data/aia_V8_20171210_050627_response_table.txt')  
+        correction_table=get_correction_table('aia_V8_20171210_050627_response_table.txt')  
         cal_ver=8
         #correct the images for degradation
         aia = [correct_degradation(m, correction_table=correction_table,calibration_version=cal_ver) for m in aia]
