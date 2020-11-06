@@ -115,11 +115,11 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
             print('\n Image looks like noise, possibly broken synoptic maps? Datamax = '+str(aia[2].meta['datamax'])+' at '+str(t)+'\n...Skipping to next...')
             dem=Dem()
             continue           
-        correction_table = get_correction_table()
-        # correction_table=get_correction_table('aiapy/aiapy/tests/data/aia_V8_20171210_050627_response_table.txt')  
-        #cal_ver=10
+        # correction_table = get_correction_table()
+        correction_table=get_correction_table('aiapy/aiapy/tests/data/aia_V8_20171210_050627_response_table.txt')  
+        cal_ver=8
         #correct the images for degradation
-        aia = [correct_degradation(m, correction_table=correction_table) for m in aia]
+        aia = [correct_degradation(m, correction_table=correction_table,calibration_version=cal_ver) for m in aia]
         aia = [update_pointing(m) for m in aia]
 
         channels = [aia[i].wavelength for i in range(nf)]
