@@ -120,7 +120,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         cal_ver=8
         #correct the images for degradation
         aia = [correct_degradation(m, correction_table=correction_table,calibration_version=cal_ver) for m in aia]
-        aia = [update_pointing(m) for m in aia]
+        # aia = [update_pointing(m) for m in aia]
 
         channels = [aia[i].wavelength for i in range(nf)]
     
