@@ -7,7 +7,7 @@ def dn2dem_pos_selfnorm(data,edata,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter
     an array of ones.
     """
     #first call dn2dem as a first estimate of the dem
-    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,tresp,tresp_logt,temps,dem_norm0=dem_norm0,max_iter=10)
+    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,tresp,tresp_logt,temps,dem_norm0=dem_norm0,max_iter=max_iter)
     dem_norm0=np.zeros(dem.shape)
     if len(data.shape)==1:
         #normalise the dem to the max value for that pixel and convolve with  a 5-wide window to smooth
@@ -23,5 +23,5 @@ def dn2dem_pos_selfnorm(data,edata,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter
                 dem_norm0[ii,jj,:]=(np.convolve(dem[ii,jj,1:-1],np.ones(5)/5))[1:-1]/np.max(dem[ii,jj,:])
     dem_norm0[dem_norm0<=1e-8]=1e-8
     #call dn2dem again with the new norm and return the dem.
-    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,tresp,tresp_logt,temps,dem_norm0=dem_norm0,max_iter=15)
+    dem,edem,elogt,chisq,dn_reg=dn2dem_pos(data,edata,tresp,tresp_logt,temps,dem_norm0=dem_norm0,max_iter=max_iter)
     return dem,edem,elogt,chisq,dn_reg
