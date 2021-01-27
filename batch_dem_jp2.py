@@ -309,7 +309,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         for ii in np.arange(nx):
             for jj in np.arange(ny):
                 dem_norm0[ii,jj,:]=(np.convolve(dem1.data[ii,jj,1:-1],np.ones(5)/5))[1:-1]/mxdem
-        dem_norm0[dem_norm0<=1e-12]=1e-12
+        dem_norm0[dem_norm0<=1e-8]=1e-8
 
         if plot_out==True:
             aia_col=['#c2c3c0','#g0r0r0']
