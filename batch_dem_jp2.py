@@ -218,6 +218,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
         for f in range(nf):
             #convert from our list to an array of data
             data[:,:,f]=aia[f].data
+            data[data<0.0]=0.0
         for j in np.arange(nf):
             shotnoise=(dn2ph[j]*data[:,:,j])**0.5/dn2ph[j]
             esys=serr_per/100.0*data[:,:,j]
