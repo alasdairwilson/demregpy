@@ -179,5 +179,5 @@ def dn2dem_pos(dn_in,edn_in,tresp,tresp_logt,temps,reg_tweak=1.0,max_iter=10,glo
     dn_reg=(np.reshape(dn_reg1d,[nx,ny,nf])).squeeze()
     #end the timing
     t_end = time.Time.now()
-    print('total elapsed time =', time.Time(t_end-t_start,format='datetime'))
+    print('total elapsed time =', (t_end-t_start).to_value('datetime'))
     return dem,edem,elogt,chisq,dn_reg
