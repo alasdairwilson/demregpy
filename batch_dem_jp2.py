@@ -52,7 +52,7 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
 
     """
-    version_number=1.1
+    version_number=1.2
     contact_email='alasdair.wilson@glasgow.ac.uk'
     location='University of Glasgow A+A'
     #we only want optically thin coronal wavelengths
@@ -124,9 +124,9 @@ def batch_dem_jp2(t_start,cadence,nobs,fits_dir,jp2_dir,get_fits=0,serr_per=10,m
 
         channels = [aia[i].wavelength for i in range(nf)]
     
-        nt=28
+        nt=32
         t_space=0.05
-        t_min=5.8
+        t_min=5.6
         logtemps=np.linspace(t_min,t_min+t_space*nt,num=nt+1)
         temperatures=10**logtemps
         logt_bin=np.zeros(nt)
