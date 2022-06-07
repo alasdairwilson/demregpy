@@ -11,3 +11,6 @@ test.py
 test1.py
 *.zip
 workspace*
+demregpy.egg-info/*
+dist/*
+demregpy/examples/testing_new.ipynb
