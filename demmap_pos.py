@@ -1,13 +1,13 @@
 import numpy as np
 from numpy import diag
-import scipy
-import concurrent.futures
 from dem_inv_gsvd import dem_inv_gsvd
 from dem_reg_map import dem_reg_map
+import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-import pdb
-def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=None):
+from threadpoolctl import threadpool_limits
+
+def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=None,nmu=42,warn=False,l_emd=False):
     """
     demmap_pos
     computes the dems for a 1 d array of length na with nf filters using the dn (g) counts and the temperature
@@ -58,7 +58,8 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     dlogt
         size of the temperature bins
     glc
-        indices of the filters for which gloci curves should be used to set the initial L constraint.
+        indices of the filters for which gloci curves should be used to set the initial L constraint
+        (if called from dn2dem_pos, then all 1s or 0s)
 
     Optional inputs
 
@@ -70,6 +71,12 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
         maximum number of times to attempt the gsvd before giving up, returns the last attempt if max_iter reached
     dem_norm0
         provides a "guess" dem as a starting point, if none is supplied one is created.
+    nmu
+        number of reg param samples to use
+    warn
+        print out warnings
+    l_emd
+        remove sqrt from constraint matrix (best with EMD)
     
     Outputs
 
@@ -101,51 +108,50 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     dn_reg=np.zeros([na,nf])
     ednin=np.zeros([nf])
  
-    #do we have enough dem's to make parallel make sense?
-    if (na>=256):
-        n_par = 128
-        print('Executing in parallel using concurrent futures')
+    # do we have enough DEM's to make parallel make sense?
+    if (na>=200):
+        n_par = 100
         niter=(int(np.floor((na)/n_par)))
-
-
-        with ProcessPoolExecutor() as exe:
-            futures=[exe.submit(dem_unwrap, dd[i*n_par:(i+1)*n_par,:],ed[i*n_par:(i+1)*n_par,:],rmatrix,logt,dlogt,glc, \
-                    reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i*n_par:(i+1)*n_par,:]) \
+#       Put this here to make sure running dem calc in parallel, not the underlying np/gsvd stuff (this correct/needed?)  
+        with threadpool_limits(limits=1):
+            with ProcessPoolExecutor() as exe:
+                futures=[exe.submit(dem_unwrap, dd[i*n_par:(i+1)*n_par,:],ed[i*n_par:(i+1)*n_par,:],rmatrix,logt,dlogt,glc, \
+                    reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i*n_par:(i+1)*n_par,:],\
+                        nmu=nmu,warn=warn,l_emd=l_emd) \
                         for i in np.arange(niter)]
-            kwargs = {
-                'total': len(futures),
-                'unit': 'DEM',
-                'unit_scale': True,
-                'leave': True
-                }
-            for f in tqdm(as_completed(futures), **kwargs):
-                pass
-        for i,f in enumerate(futures):
-        #store the outputs in arrays
-            dem[i*n_par:(i+1)*n_par,:]=f.result()[0]
-            edem[i*n_par:(i+1)*n_par,:]=f.result()[1]
-            elogt[i*n_par:(i+1)*n_par,:]=f.result()[2]
-            chisq[i*n_par:(i+1)*n_par]=f.result()[3]
-            dn_reg[i*n_par:(i+1)*n_par,:]=f.result()[4]
-        #if there are any remaining dems then execute remainder in serial
-        if (np.mod(na,niter*n_par) != 0):
-            i_start=niter*n_par
-            for i in range(na-i_start):
-                result=dem_pix(dd[i_start+i,:],ed[i_start+i,:],rmatrix,logt,dlogt,glc, \
-                    reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i_start+i,:])
-                dem[i_start+i,:]=result[0]
-                edem[i_start+i,:]=result[1]
-                elogt[i_start+i,:]=result[2]
-                chisq[i_start+i]=result[3]
-                dn_reg[i_start+i,:]=result[4]
+                kwargs = {
+                    'total': len(futures),
+                    'unit': ' x10^2 DEM',
+                    'unit_scale': True,
+                    'leave': True
+                    }
+                for f in tqdm(as_completed(futures), **kwargs):
+                    pass
+            for i,f in enumerate(futures):
+            #store the outputs in arrays
+                dem[i*n_par:(i+1)*n_par,:]=f.result()[0]
+                edem[i*n_par:(i+1)*n_par,:]=f.result()[1]
+                elogt[i*n_par:(i+1)*n_par,:]=f.result()[2]
+                chisq[i*n_par:(i+1)*n_par]=f.result()[3]
+                dn_reg[i*n_par:(i+1)*n_par,:]=f.result()[4]
+            #if there are any remaining dems then execute remainder in serial
+            if (np.mod(na,niter*n_par) != 0):
+                i_start=niter*n_par
+                for i in range(na-i_start):
+                    result=dem_pix(dd[i_start+i,:],ed[i_start+i,:],rmatrix,logt,dlogt,glc, \
+                        reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i_start+i,:],\
+                            nmu=nmu,warn=warn,l_emd=l_emd)
+                    dem[i_start+i,:]=result[0]
+                    edem[i_start+i,:]=result[1]
+                    elogt[i_start+i,:]=result[2]
+                    chisq[i_start+i]=result[3]
+                    dn_reg[i_start+i,:]=result[4]
         
     #else we execute in serial
     else:   
-        print('Executing in serial')
-
         for i in range(na):
             result=dem_pix(dd[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
-                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
+                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:],nmu=nmu,warn=warn,l_emd=l_emd)
             dem[i,:]=result[0]
             edem[i,:]=result[1]
             elogt[i,:]=result[2]
@@ -154,7 +160,7 @@ def demmap_pos(dd,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
 
     return dem,edem,elogt,chisq,dn_reg
 
-def dem_unwrap(dn,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
+def dem_unwrap(dn,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0,nmu=42,warn=False,l_emd=False):
     #this nasty function serialises the parallel blocks
     ndem=dn.shape[0]
     nt=logt.shape[0]
@@ -166,7 +172,7 @@ def dem_unwrap(dn,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
     dn_reg=np.zeros([ndem,nf])
     for i in range(ndem):
         result=dem_pix(dn[i,:],ed[i,:],rmatrix,logt,dlogt,glc, \
-                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:])
+                reg_tweak=reg_tweak,max_iter=max_iter,rgt_fact=rgt_fact,dem_norm0=dem_norm0[i,:],nmu=nmu,warn=warn,l_emd=l_emd)
         dem[i,:]=result[0]
         edem[i,:]=result[1]
         elogt[i,:]=result[2]
@@ -174,10 +180,11 @@ def dem_unwrap(dn,ed,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1
         dn_reg[i,:]=result[4]
     return dem,edem,elogt,chisq,dn_reg
 
-def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0):
+def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact=1.5,dem_norm0=0,nmu=42,warn=True,l_emd=False):
+    
     nf=rmatrix.shape[1]
     nt=logt.shape[0]
-    nmu=42
+    # nmu=42
     ltt=min(logt)+1e-8+(max(logt)-min(logt))*np.arange(51)/(52-1.0)
     dem=np.zeros(nt)
     edem=np.zeros(nt)
@@ -186,9 +193,8 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
     dn_reg=np.zeros(nf)
 
     rmatrixin=np.zeros([nt,nf])
-    filt=np.zeros([nf,nt])
-
-    dem_reg_wght=dem_norm0
+    filt=np.zeros([nf,nt])  
+    
     for kk in np.arange(nf):
         #response matrix
         rmatrixin[:,kk]=rmatrix[:,kk]/ednin[kk]
@@ -206,54 +212,68 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
         
 #  If you have supplied an initial guess/constraint normalized DEM then don't
 #  need to calculate one (either from L=1/sqrt(dLogT) or min of EM loci)
-    
-#  Though need to check what you have supplied is correct dimension 
-#  and no element 0 or less.
-        if( len(dem_reg_wght) == nt):
-            
-            if (np.prod(dem_reg_wght) > 0):
-                test_dem_reg=np.ones(1).astype(int)
-        # use the min of the emloci as the initial dem_reg
-        if ((test_dem_reg).shape[0] == nt):
+
+# As the call to this now sets dem_norm to array of 1s if nothing provided by user can also test for that
+
+#     Before calling this dem_norm0 is set to array of 1s if nothing provided by user
+#     So we need to work out some weighting for L or is one provided as dem_norm0 (not 0 or array of 1s)?
+        if (np.prod(dem_norm0) == 1.0 or dem_norm0[0] == 0):
+# Need to work out a weighting here then, have two appraoches:
+#         1. Do it via the min of em loci - chooses this if gloci, glc=1 from user
             if (np.sum(glc) > 0.0):
                 gdglc=(glc>0).nonzero()[0]
-                emloci=np.zeros(nt,gdglc.shape[0])
+                emloci=np.zeros((nt,gdglc.shape[0]))
                 #for each gloci take the minimum and work out the emission measure
-                for ee in np.arrange(gdglc.shape[0]):
+                for ee in np.arange(gdglc.shape[0]):
                     emloci[:,ee]=dnin[gdglc[ee]]/(rmatrix[:,gdglc[ee]])
                 #for each temp we take the min of the loci curves as the estimate of the dem
+                dem_model=np.zeros(nt)
                 for ttt in np.arange(nt):
-                    dem_model[ttt]=min(emloci[ttt,:] > 0.)
-                dem_model=np.convolve(dem_model,np.ones(3)/3)[1:-1]
-                dem_reg=dem_model/max(dem_model)+1e-10
+                    dem_model[ttt]=np.min(emloci[ttt,np.nonzero(emloci[ttt,:])])
+                dem_reg_lwght=dem_model
+#                ~~~~~~~~~~~~~~~~~ 
+#             2. Or if nothing selected will run reg once, and use solution as weighting (self norm appraoch)
             else:
                 # Calculate the initial constraint matrix
                 # Just a diagional matrix scaled by dlogT
-                L=diag(1.0/np.sqrt(dlogt[:]))
+                L=np.diag(1.0/np.sqrt(dlogt[:]))
                 #run gsvd
                 sva,svb,U,V,W=dem_inv_gsvd(rmatrixin.T,L)
                 #run reg map
                 lamb=dem_reg_map(sva,svb,U,W,dn,edn,rgt,nmu)
                 #filt, diagonal matrix
-                filt=diag(sva/(sva**2+svb**2*lamb))
-
-                kdag=W@(U[:nf,:nf].T@filt)
+                for kk in np.arange(nf):
+                    filt[kk,kk]=(sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
+                kdag=W@(filt.T@U[:nf,:nf])
                 dr0=(kdag@dn).squeeze()
                 # only take the positive with certain amount (fcofmx) of max, then make rest small positive
                 fcofmax=1e-4
-                mask=np.where(dr0 > 0) and (dr0 > fcofmax*np.max(dr0)) 
-                dem_reg[mask]=dr0[mask]
-                dem_reg[~mask]=1
-                #scale and then smooth by convolution with boxcar width 3
-                dem_reg=np.convolve(dem_reg/(fcofmx*max(dr0),np.ones(3)/3))[1:-1]
+                mask=np.where(dr0 > 0) and (dr0 > fcofmax*np.max(dr0))
+                dem_reg_lwght=np.ones(nt)
+                dem_reg_lwght[mask]=dr0[mask]
+#                ~~~~~~~~~~~~~~~~~ 
+#            Just smooth these inital dem_reg_lwght and max sure no value is too small
+#             dem_reg_lwght=(np.convolve(dem_reg_lwght,np.ones(3)/3))[1:-1]/np.max(dem_reg_lwght[:])     
+            dem_reg_lwght=(np.convolve(dem_reg_lwght[1:-1],np.ones(5)/5))[1:-1]/np.max(dem_reg_lwght[:])       
+            dem_reg_lwght[dem_reg_lwght<=1e-8]=1e-8
         else:
-            dem_reg=dem_reg_wght
+#             Otherwise just set dem_reg to inputted weight   
+            dem_reg_lwght=dem_norm0
 
+#       Now actually do the dem regularisation using the L weighting from above
+#       Faster to do this and the GSVD on R and L before the pos loop 
+        if l_emd:
+            # this works better with EMD calc, instead of DEM
+            L=np.diag(1/abs(dem_reg_lwght)) 
+        else:
+            L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght))) 
+        sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
+#  Now loop until positive solution or max_iter reached
         while((ndem > 0) and (piter < max_iter)):
-            #make L from 1/dem reg scaled by dlogt and diagonalise
-            L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg))) 
-            #call gsvd and reg map
-            sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
+            # #make L from 1/dem reg scaled by dlogt and diagonalise
+            # L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght))) 
+            # #call gsvd and reg map
+            # sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
             lamb=dem_reg_map(sva,svb,U,W,dn,edn,rgt,nmu)
             for kk in np.arange(nf):
                 filt[kk,kk]=(sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
@@ -264,8 +284,10 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
             ndem=len(dem_reg_out[dem_reg_out < 0])
             rgt=rgt_fact*rgt
             piter+=1
-
         
+        if (warn and (piter == max_iter)):
+            print('Warning, positivity loop hit max iterations, so increase max_iter? Or rgt_fact too small?')
+      
         dem=dem_reg_out
 
         #work out the theoretical dn and compare to the input dn
@@ -277,7 +299,6 @@ def dem_pix(dnin,ednin,rmatrix,logt,dlogt,glc,reg_tweak=1.0,max_iter=10,rgt_fact
         #do error calculations on dem
         delxi2=kdag@kdag.T
         edem=np.sqrt(np.diag(delxi2))
-
 
         kdagk=kdag@rmatrixin.T
 
