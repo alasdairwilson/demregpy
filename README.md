@@ -1,6 +1,6 @@
 DEMREG-PY
 
-This is a python implementation of Hannah & Kontar (2012)'s regularised inversion method. The code is tightly based on the IDL mapping version of the DEM reg-inv code found at https://github.com/ianan/demreg
+This is a python implementation of Hannah & Kontar (2012)'s regularised inversion method. The code is tightly based on the IDL mapping version of the DEM reg-inv code found at https://github.com/ianan/demreg in addition, the code enforces a positivity constraint on the DEM (hence pos)
 
 The philosophy was to produce as similar a piece of software as the original version and as such, this python version has been shown to recover the same DEM as the IDL version (to within approximately 4 significant figures). It is likely this philosophy has lead to performance hits and I plan to go back and address the more hacky parts of the code at a later date.
 
