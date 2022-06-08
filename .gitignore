@@ -14,3 +14,5 @@ workspace*
 demregpy.egg-info/*
 dist/*
 demregpy/__pycache__/*
+demregpy/__pycache__/*pyc
+build/*

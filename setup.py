@@ -7,7 +7,7 @@ def readme():
 
 setup(
     name='demregpy',
-    version='0.6.1',
+    version='0.6.2',
     description='DEM Regularised Inversion Calculation in Python (Hannah & Kontar 2012)',
     long_description_content_type='text/markdown',
     long_description=readme(),
