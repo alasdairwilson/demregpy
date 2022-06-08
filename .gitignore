@@ -13,4 +13,4 @@ test1.py
 workspace*
 demregpy.egg-info/*
 dist/*
-demregpy/examples/testing_new.ipynb
+demregpy/__pycache__/*
