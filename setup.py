@@ -4,9 +4,10 @@ def readme():
     with open('README.md', 'r') as f:
         return f.read()
 
+
 setup(
     name='demregpy',
-    version='0.6',
+    version='0.6.1',
     description='DEM Regularised Inversion Calculation in Python (Hannah & Kontar 2012)',
     long_description_content_type='text/markdown',
     long_description=readme(),
