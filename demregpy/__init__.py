@@ -1,3 +1,5 @@
-#demregpy
-from .dn2dem import dn2dem
+"""demregpy."""
+
 import demregpy.tresp
+
+from .dn2dem import dn2dem

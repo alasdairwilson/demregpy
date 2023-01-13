@@ -1,6 +1,9 @@
+"""demregpy setup."""
 from setuptools import setup
 
+
 def readme():
+    """Load Readme."""
     with open('README.md', 'r') as f:
         return f.read()
 
@@ -16,7 +19,7 @@ setup(
     author_email='alasdair.wlsn@gmail.com',
     license='MIT',
     packages=[''],
-    include_package_data = True,
+    include_package_data=True,
     package_data={'': ['tresp/*.dat']},
     install_requires=[
         'numpy',
