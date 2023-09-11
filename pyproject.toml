@@ -4,7 +4,6 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = "demregpy"
-# version = "0.0.1"  # Remove any existing version parameter.
 dynamic = ["version"]
 
 [tool.setuptools_scm]
