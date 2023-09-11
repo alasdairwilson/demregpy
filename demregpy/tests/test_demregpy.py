@@ -1,5 +1,4 @@
-from demregpy.dn2dem import dn2dem
-
+import demregpy.dn2dem as dn2dem
 
 def test_1():
-    return
+    assert True

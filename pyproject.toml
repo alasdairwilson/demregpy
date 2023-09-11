@@ -8,3 +8,11 @@ dynamic = ["version"]
 
 [tool.setuptools_scm]
 write_to = 'demregpy/_version.py'
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+pythonpath = "."
