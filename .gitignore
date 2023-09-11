@@ -15,5 +15,6 @@ demregpy/_version.py
 demregpy/__pycache__/*
 demregpy/__pycache__/*pyc
 build/*
-__pycache__/*
+*/__pycache__/*
+/__pycache__/*
 mypy.ini
