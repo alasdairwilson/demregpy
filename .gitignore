@@ -1,5 +1,4 @@
 /__pycache__
-/test
 /.got
 /.vscode
 *.fits
@@ -10,7 +9,9 @@
 *.zip
 workspace*
 demregpy.egg-info/*
+demregpy/demregpy.egg-info/*
 dist/*
+demregpy/_version.py
 demregpy/__pycache__/*
 demregpy/__pycache__/*pyc
 build/*
