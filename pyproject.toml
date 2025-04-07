@@ -1,10 +1,32 @@
 [build-system]
-requires = ['setuptools>=60', 'wheel', 'setuptools_scm[toml]>=3.4']
+requires = ['setuptools>=60',
+            'wheel',
+            'setuptools_scm[toml]>=3.4']
 build-backend = 'setuptools.build_meta'
 
 [project]
 name = "demregpy"
 dynamic = ["version"]
+description = "DEM Regularised Inversion Calculation in Python (Hannah & Kontar 2012)"
+license = {file="LICENSE.rst"}
+authors = [
+    {name="Alasdair Wilson", email="alasdair.wlsn@gmail.com"}
+]
+readme = {file="README.md", content-type="text/markdown"}
+requires-python = ">=3.6"
+dependencies = [
+    "numpy>1.23.0",
+    "tqdm>=4.0.0",
+    "threadpoolctl>=3.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/alasdairwilson/demregpy"
+Issues = "https://github.com/alasdairwilson/demregpy/issues"
+
+[tool.setuptools]
+packages = ["demregpy"]
 
 [tool.setuptools_scm]
 write_to = 'demregpy/_version.py'
+
