@@ -1,7 +1,13 @@
-"""Turn Solar data and temperature responses into DEM(T)."""
+"""
+Turn Solar data and temperature responses into DEM(T)
+"""
+
 import numpy as np
 from demregpy.demmap import demmap
 
+__all__ = [
+    'dn2dem',
+]
 
 def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, gloci=0,  # noqa C901
            rgt_fact=1.5, dem_norm0=None, nmu=40, warn=False, emd_int=False, emd_ret=False, l_emd=False, non_pos=False):

@@ -1,4 +1,6 @@
-"""Produce DEMs by regularised inversion of solar data."""
+"""
+Produce DEMs by regularized inversion of solar data
+"""
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -7,6 +9,13 @@ from numpy.linalg import inv, pinv, svd
 from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 
+__all__ = [
+    'demmap',
+    'dem_unwrap',
+    'dem_pix',
+    'dem_reg_map',
+    'dem_inv_gsvd'
+]
 
 def demmap(dd, ed, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
            rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False):
