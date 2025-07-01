@@ -3,5 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.13
+  - numpy<2.3  # Avoid numpy 2.3 till astropy fixes fast C time parse issue
   - pip
   - graphviz!=2.42.*,!=2.43.*
