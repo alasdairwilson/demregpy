@@ -106,9 +106,9 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     sze = dn_in.shape
 
     # for a single pixel
-    if (np.any(dem_norm0) is None):
-        #         If no dem0 wght given just set them all to 1
+    if dem_norm0 is None or np.all(~np.isfinite(dem_norm0)) or np.all(dem_norm0 == 0):
         dem_norm0 = np.ones(np.hstack((dn_in.shape[0:-1], nt)).astype(int))
+    # for a single pixel
     if len(sze) == 1:
         nx = 1
         ny = 1
@@ -117,13 +117,14 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dn[0, 0, :] = dn_in
         edn = np.zeros([1, 1, nf])
         edn[0, 0, :] = edn_in
-        if (np.all(dem_norm0) is not None):
+        if dem_norm0 is not None and np.isfinite(dem_norm0).all():
             dem0 = np.zeros([1, 1, nt])
             dem0[0, 0, :] = dem_norm0
-        if (warn is False):
+        if warn is False:
             warn = True
-        if (nmu <= 40):
+        if nmu <= 40:
             nmu = 500
+
     # for a row of pixels
     if len(sze) == 2:
         nx = sze[0]
@@ -133,11 +134,12 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dn[:, 0, :] = dn_in
         edn = np.zeros([nx, 1, nf])
         edn[:, 0, :] = edn_in
-        if (np.all(dem_norm0) is not None):
+        if dem_norm0 is not None and np.isfinite(dem_norm0).all():
             dem0 = np.zeros([nx, 1, nt])
             dem0[:, 0, :] = dem_norm0
-        if (nmu <= 40):
+        if nmu <= 40:
             nmu = 42
+
     # for 2d image
     if len(sze) == 3:
         nx = sze[0]
@@ -147,12 +149,11 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dn[:, :, :] = dn_in
         edn = np.zeros([nx, ny, nf])
         edn[:, :, :] = edn_in
-        if (np.all(dem_norm0) is not None):
+        if dem_norm0 is not None and np.isfinite(dem_norm0).all():
             dem0 = np.zeros([nx, ny, nt])
             dem0[:, :, :] = dem_norm0
-        if (nmu <= 40):
+        if nmu <= 40:
             nmu = 42
-
     # If want to ignore positivity constraint then set max_iter=1 and no need for the warnings
     if non_pos:
         max_iter = 1
