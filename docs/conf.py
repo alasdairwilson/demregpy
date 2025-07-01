@@ -5,8 +5,9 @@
 # http://www.sphinx-doc.org/en/master/config
 
 import datetime
-
 from packaging.version import Version
+from sunpy_sphinx_theme import PNG_ICON
+from pathlib import Path
 
 # -- Project information -----------------------------------------------------
 
@@ -49,6 +50,7 @@ extensions = [
     "sphinx_automodapi.automodapi",
     "sphinx_automodapi.smart_resolver",
     "sphinx_changelog",
+    "sphinx_gallery.gen_gallery",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -105,5 +107,22 @@ graphviz_dot_args = [
 # the docs. For more options, see:
 # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autoclass_content
 autoclass_content = "both"
+
+# -- Sphinx Gallery ------------------------------------------------------------
+sphinx_gallery_conf = {
+    'backreferences_dir': Path('generated') / 'modules',
+    'filename_pattern': '^((?!skip_).)*$',
+    'examples_dirs': Path('..') / 'examples',
+    'within_subsection_order': "ExampleTitleSortKey",
+    'gallery_dirs': Path('generated') / 'gallery',
+    'matplotlib_animations': True,
+    # Comes from the theme.
+    "default_thumb_file": PNG_ICON,
+    'abort_on_example_error': False,
+    'plot_gallery': 'True',
+    'remove_config_comments': True,
+    'doc_module': ('sunpy'),
+    'only_warn_on_example_error': True,
+}
 
 # -- Other options ----------------------------------------------------------

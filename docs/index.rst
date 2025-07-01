@@ -8,11 +8,6 @@ This is the documentation for demregpy.
    :maxdepth: 2
    :caption: Contents:
 
+   api
+   generated/gallery/index
    whatsnew/index
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

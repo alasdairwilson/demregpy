@@ -16,9 +16,9 @@ authors = [
   { name = "Alasdair Wilson", email = "alasdair.wlsn@gmail.com" },
 ]
 dependencies = [
-  "numpy>1.23.0",
-  "tqdm>=4.0.0",
-  "threadpoolctl>=3.0.0",
+  "numpy>=2.0.0",
+  "tqdm>=4.67.0",
+  "threadpoolctl>=3.6.0",
 ]
 dynamic = ["version"]
 
@@ -35,6 +35,11 @@ docs = [
   "sphinx-changelog",
   "sunpy-sphinx-theme",
   "packaging",
+  "matplotlib",
+  "scipy",
+  "sphinx-gallery",
+  "sunpy[map,net]",
+  "aiapy",
 ]
 
 [project.urls]

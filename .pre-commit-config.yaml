@@ -29,7 +29,6 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
-        args: [ "--write-changes" ]
 ci:
   autofix_prs: false
   autoupdate_schedule: "quarterly"
