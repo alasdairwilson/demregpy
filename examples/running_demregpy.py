@@ -117,7 +117,7 @@ print(100*dn_reg1/dn_in)
 ##############################################################################
 # Now work out the DEM - investigate 3 standard ways of running
 # 1. Default - reg runs twice, 1st time to work out weight for constraint matrix, then regs with that
-#         Best option if don't know what doing, hence its the default
+# Best option if don't know what doing, hence its the default
 
 mint=5.7
 maxt=7.2
