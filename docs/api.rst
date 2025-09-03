@@ -1,0 +1,4 @@
+demregpy (`demregpy`)
+*********************
+
+.. automodapi:: demregpy
