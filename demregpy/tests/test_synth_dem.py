@@ -4,7 +4,14 @@ import pytest
 from demregpy.dn2dem import dn2dem
 
 
-def _synthetic_case(centers=None, sigma=0.08, d1=4e22, m1=6.0, s1=0.12):
+def _synthetic_case(
+    centers=None,
+    sigma=0.08,
+    d1=4e22,
+    m1=6.0,
+    s1=0.12,
+    dem_peaks=None,
+):
     # Response grid in logT (matches temps bins)
     tresp_logt = np.linspace(5.7, 6.3, 7)
     nt = len(tresp_logt)
@@ -18,9 +25,21 @@ def _synthetic_case(centers=None, sigma=0.08, d1=4e22, m1=6.0, s1=0.12):
     for i, c in enumerate(centers):
         trmatrix[:, i] = np.exp(-((tresp_logt - c) ** 2) / (2 * sigma ** 2))
 
-    # Synthetic DEM model
+    # Synthetic DEM model (single or multi-peak)
     root2pi = (2.0 * np.pi) ** 0.5
-    dem_mod = (d1 / (root2pi * s1)) * np.exp(-((tresp_logt - m1) ** 2) / (2 * s1 ** 2))
+    if dem_peaks is None:
+        dem_mod = (d1 / (root2pi * s1)) * np.exp(
+            -((tresp_logt - m1) ** 2) / (2 * s1 ** 2)
+        )
+    else:
+        dem_mod = np.zeros_like(tresp_logt)
+        for peak in dem_peaks:
+            p_m = peak.get("m", m1)
+            p_s = peak.get("s", s1)
+            p_d = peak.get("d", d1)
+            dem_mod += (p_d / (root2pi * p_s)) * np.exp(
+                -((tresp_logt - p_m) ** 2) / (2 * p_s ** 2)
+            )
 
     # Build DN from DEM and response (mirrors example)
     step = tresp_logt[1] - tresp_logt[0]
@@ -141,3 +160,33 @@ def test_synth_golden_outputs():
     np.testing.assert_allclose(dem, expected_dem, rtol=1e-5, atol=0.0)
     np.testing.assert_allclose(dn_reg, expected_dn_reg, rtol=1e-5, atol=0.0)
     assert abs(chisq - expected_chisq) < 1e-6
+
+
+@pytest.mark.parametrize(
+    "dem_peaks",
+    [
+        [
+            {"m": 5.9, "s": 0.08, "d": 2e22},
+            {"m": 6.05, "s": 0.10, "d": 3e22},
+        ],
+        [
+            {"m": 5.85, "s": 0.07, "d": 1.5e22},
+            {"m": 6.00, "s": 0.09, "d": 2.5e22},
+            {"m": 6.15, "s": 0.08, "d": 2e22},
+        ],
+        [
+            {"m": 5.8, "s": 0.06, "d": 1.2e22},
+            {"m": 5.95, "s": 0.08, "d": 2.0e22},
+            {"m": 6.1, "s": 0.07, "d": 1.8e22},
+            {"m": 6.25, "s": 0.09, "d": 1.4e22},
+        ],
+    ],
+)
+def test_synth_multi_peak_dem(dem_peaks):
+    dn_in, edn_in, trmatrix, tresp_logt, temps = _synthetic_case(dem_peaks=dem_peaks)
+    dem, edem, elogt, chisq, dn_reg = dn2dem(
+        dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False
+    )
+    ratio = dn_reg / dn_in
+    assert np.all((ratio > 0.80) & (ratio < 1.10))
+    assert 0.5 < chisq < 1.5
