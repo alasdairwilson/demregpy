@@ -320,3 +320,41 @@ def test_synth_emd_reg_tweak(reg_tweak):
     assert np.all((ratio > 0.70) & (ratio < 1.15))
     # reg_tweak scales the target misfit, so chisq can legitimately drop below 1.0
     assert 0.1 < chisq < 3.0
+
+
+def test_synth_non_pos_mode_runs():
+    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
+    dem, edem, elogt, chisq, dn_reg = dn2dem(
+        dn_in,
+        edn_in,
+        trmatrix,
+        tresp_logt,
+        temps,
+        nmu=50,
+        warn=False,
+        non_pos=True,
+    )
+    assert np.isfinite(dem).all()
+    assert np.isfinite(edem).all()
+    assert np.isfinite(elogt).all()
+    assert np.isfinite(chisq)
+    assert np.isfinite(dn_reg).all()
+
+
+def test_synth_l_emd_flag_runs():
+    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
+    dem, edem, elogt, chisq, dn_reg = dn2dem(
+        dn_in,
+        edn_in,
+        trmatrix,
+        tresp_logt,
+        temps,
+        nmu=50,
+        warn=False,
+        l_emd=True,
+    )
+    assert np.isfinite(dem).all()
+    assert np.isfinite(edem).all()
+    assert np.isfinite(elogt).all()
+    assert np.isfinite(chisq)
+    assert np.isfinite(dn_reg).all()
