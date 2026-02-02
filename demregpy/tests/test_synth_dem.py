@@ -72,6 +72,23 @@ def test_synth_chisq_near_unity(centers):
     assert 0.5 < chisq < 1.5
 
 
+@pytest.mark.parametrize("noise_frac", [0.02, 0.05, 0.10])
+def test_synth_with_noise(noise_frac):
+    dn_in, edn_in, trmatrix, tresp_logt, temps = _synthetic_case()
+    rng = np.random.RandomState(0)
+    dn_noisy = dn_in * (1.0 + rng.normal(0.0, noise_frac, size=dn_in.shape))
+    dn_noisy = np.maximum(dn_noisy, dn_in * 0.1)
+    edn_noisy = noise_frac * dn_in
+
+    dem, edem, elogt, chisq, dn_reg = dn2dem(
+        dn_noisy, edn_noisy, trmatrix, tresp_logt, temps, nmu=50, warn=False
+    )
+
+    ratio = dn_reg / dn_noisy
+    assert np.all((ratio > 0.70) & (ratio < 1.20))
+    assert 0.3 < chisq < 3.0
+
+
 def test_synth_2d_shapes():
     dn_in, edn_in, trmatrix, tresp_logt, temps = _synthetic_case()
     nx, ny = 2, 3
