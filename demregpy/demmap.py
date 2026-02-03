@@ -104,6 +104,10 @@ def demmap(
     na = dd.shape[0]
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
+    if dem_norm0 is None:
+        dem_norm0 = np.ones((na, nt))
+    elif np.isscalar(dem_norm0):
+        raise ValueError("dem_norm0 must be an array matching (na, nt), not a scalar")
     # set up some arrays
     dem = np.zeros([na, nt])
     edem = np.zeros([na, nt])
@@ -170,7 +174,7 @@ def demmap(
 
 def dem_unwrap(
     dn, ed, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-    rgt_fact=1.5, dem_norm0=0, nmu=42, warn=False, l_emd=False
+    rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False
 ):
     """
     Execute a series of DEM calculations in serial when provided an array of DEM input params.
@@ -220,6 +224,10 @@ def dem_unwrap(
     ndem = dn.shape[0]
     nt = logt.shape[0]
     nf = dn.shape[1]
+    if dem_norm0 is None:
+        dem_norm0 = np.ones((ndem, nt))
+    elif np.isscalar(dem_norm0):
+        raise ValueError("dem_norm0 must be an array matching (ndem, nt), not a scalar")
     dem = np.zeros([ndem, nt])
     edem = np.zeros([ndem, nt])
     elogt = np.zeros([ndem, nt])
@@ -240,7 +248,7 @@ def dem_unwrap(
 
 
 def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-            rgt_fact=1.5, dem_norm0=0, nmu=42, warn=True, l_emd=False):
+            rgt_fact=1.5, dem_norm0=None, nmu=42, warn=True, l_emd=False):
     """
     Calculate the DEM etc. of a single pixel.
 
@@ -288,6 +296,10 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     """
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
+    if dem_norm0 is None:
+        dem_norm0 = np.ones(nt)
+    elif np.isscalar(dem_norm0):
+        raise ValueError("dem_norm0 must be an array matching (nt,), not a scalar")
     # nmu=42
     ltt = min(logt)+1e-8+(max(logt)-min(logt))*np.arange(51)/(52-1.0)
     dem = np.zeros(nt)
@@ -303,7 +315,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     dn = dnin/ednin
     edn = ednin/ednin
     # checking for Inf and NaN
-    if (sum(np.isnan(dn)) == 0 and sum(np.isinf(dn)) == 0 and np.prod(dn) > 0):
+    if np.all(np.isfinite(dn)) and np.all(dn >= 0):
         ndem = 1
         piter = 0
         rgt = reg_tweak
@@ -325,7 +337,8 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
                 # for each temp we take the min of the loci curves as the estimate of the dem
                 dem_model = np.zeros(nt)
                 for ttt in np.arange(nt):
-                    dem_model[ttt] = np.min(emloci[ttt, np.nonzero(emloci[ttt, :])])
+                    nz = np.nonzero(emloci[ttt, :])[0]
+                    dem_model[ttt] = np.min(emloci[ttt, nz]) if nz.size > 0 else 0.0
                 dem_reg_lwght = dem_model
             # ~~~~~~~~~~~~~~~~~
             # 2. Or if nothing selected will run reg once, and use solution as weighting (self norm approach)
@@ -438,11 +451,18 @@ def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
     # minx=min(sigs)**2.0*1E-2
     # Useful to make the lower limit smaller?
     minx = min(sigs)**2.0*1E-4
+    minx = max(minx, np.finfo(float).tiny)
     # Range from original non-map code
     # maxx=max(sigs)*1E3
     # minx=max(sigs)*1E-15
-    step = (np.log(maxx)-np.log(minx))/(nmu-1.)
-    mu = np.exp(np.arange(nmu)*step)*minx
+    denom = max(nmu - 1.0, 1.0)
+    log_min = np.log(minx)
+    log_max = np.log(maxx)
+    log_max = min(log_max, np.log(np.finfo(float).max))
+    step = (log_max - log_min) / denom
+    log_mu = log_min + np.arange(nmu) * step
+    log_mu = np.clip(log_mu, log_min, log_max)
+    mu = np.exp(log_mu)
     for kk in np.arange(nf):
         coef = data@U[kk, :]
         for ii in np.arange(nmu):
@@ -482,7 +502,7 @@ def dem_inv_gsvd(A, B):
         decomposition product weights.
     """
     # calculate the matrix A*B^-1
-    AB1 = A@inv(B)
+    AB1 = A@pinv(B)
     sze = AB1.shape
     C = np.zeros([max(sze), max(sze)])
     C[:sze[0], :sze[1]] = AB1
