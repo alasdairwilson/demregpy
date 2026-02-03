@@ -36,8 +36,7 @@ more information.
 Contributing
 ------------
 
-We love contributions! demregpy is open source,
-built on open source, and we'd love to have you hang out in our community.
+We love contributions! demregpy is open source, built on open source, and we'd love to have you hang out in our community.
 
 **Imposter syndrome disclaimer**: We want your help. No, really.
 
