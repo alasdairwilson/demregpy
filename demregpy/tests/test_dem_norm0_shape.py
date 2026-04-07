@@ -1,6 +1,7 @@
+from importlib import import_module
+
 import numpy as np
 import pytest
-from importlib import import_module
 
 from demregpy.demmap import dem_pix, dem_unwrap, demmap
 
@@ -26,7 +27,7 @@ def _basic_inputs():
 
 def test_dem_pix_rejects_scalar_dem_norm0():
     dnin, ednin, rmatrix, logt, dlogt, glc = _basic_inputs()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="dem_norm0 must be an array matching \\(nt,\\), not a scalar"):
         dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, dem_norm0=0)
 
 
@@ -34,7 +35,7 @@ def test_dem_unwrap_rejects_scalar_dem_norm0():
     dnin, ednin, rmatrix, logt, dlogt, glc = _basic_inputs()
     dn = np.vstack([dnin, dnin])
     ed = np.vstack([ednin, ednin])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="dem_norm0 must be an array matching \\(ndem, nt\\), not a scalar"):
         dem_unwrap(dn, ed, rmatrix, logt, dlogt, glc, dem_norm0=0)
 
 
@@ -42,7 +43,7 @@ def test_demmap_rejects_scalar_dem_norm0():
     dnin, ednin, rmatrix, logt, dlogt, glc = _basic_inputs()
     dd = np.vstack([dnin, dnin])
     ed = np.vstack([ednin, ednin])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="dem_norm0 must be an array matching \\(na, nt\\), not a scalar"):
         demmap(dd, ed, rmatrix, logt, dlogt, glc, dem_norm0=0)
 
 

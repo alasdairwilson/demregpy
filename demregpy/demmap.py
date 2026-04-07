@@ -5,7 +5,7 @@ Produce DEMs by regularized inversion of solar data
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
-from numpy.linalg import inv, pinv, svd
+from numpy.linalg import pinv, svd
 from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 
@@ -308,13 +308,11 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     chisq = 0
     dn_reg = np.zeros(nf)
     rmatrixin = rmatrix / ednin[np.newaxis, :]
-    filt_rhs = np.zeros((nt, nf))
     dn = dnin/ednin
     edn = ednin/ednin
     ndem = 1
     piter = 0
     rgt = reg_tweak
-    L = np.zeros([nt, nt])
     #  If you have supplied an initial guess/constraint normalized DEM then don't
     #  need to calculate one (either from L=1/sqrt(dLogT) or min of EM loci)
     # As the call to this now sets dem_norm to array of 1s if nothing provided by user can also test for that
@@ -342,7 +340,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
             # Just a diagonal matrix scaled by dlogT
             ldiag = 1.0 / np.sqrt(dlogt[:])
             # run gsvd
-            sva, svb, U, V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
+            sva, svb, U, _V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
             # run reg map
             mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
             lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
@@ -374,7 +372,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         ldiag = 1 / abs(dem_reg_lwght)
     else:
         ldiag = np.sqrt(dlogt) / np.sqrt(abs(dem_reg_lwght))
-    sva, svb, U, V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
+    sva, svb, U, _V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
     mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
     U_nf = U[:nf, :nf]
     W_nf = W[:, :nf]
@@ -434,9 +432,9 @@ def _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu):
     mu = np.exp(log_mu)
     coef = U[:nf, :] @ data
     sigmab_sq = sigmab[:nf, None]**2
-    numer = mu[None, :] * sigmab_sq * coef[:, None]
+    numerator = mu[None, :] * sigmab_sq * coef[:, None]
     denom = sigmaa[:nf, None]**2 + mu[None, :] * sigmab_sq
-    misfit_curve = np.sum((numer / denom)**2, axis=0)
+    misfit_curve = np.sum((numerator / denom)**2, axis=0)
     err_term = np.sum(err**2)
     return mu, misfit_curve, err_term
 

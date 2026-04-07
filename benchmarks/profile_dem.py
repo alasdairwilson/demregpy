@@ -3,11 +3,9 @@
 Profile dem_pix on synthetic inputs.
 """
 
-from __future__ import annotations
-
+import pstats
 import argparse
 import cProfile
-import pstats
 from pathlib import Path
 
 import numpy as np
