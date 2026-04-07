@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from demregpy.demmap import dem_inv_gsvd, dem_pix
 
@@ -43,3 +44,23 @@ def test_dem_pix_accepts_zero_dn():
     assert np.isfinite(elogt).all()
     assert np.isfinite(chisq)
     assert np.isfinite(dn_reg).all()
+
+
+@pytest.mark.parametrize(
+    ("dnin", "message"),
+    [
+        (np.array([1.0, -2.0]), "non-negative"),
+        (np.array([1.0, np.nan]), "finite"),
+    ],
+)
+def test_dem_pix_rejects_invalid_dn(dnin, message):
+    nt = 6
+    nf = 2
+    rmatrix = np.ones((nt, nf))
+    logt = np.linspace(1.0, 2.0, nt)
+    dlogt = np.full(nt, 0.1)
+    glc = np.ones(nf)
+    ednin = np.ones(nf)
+
+    with pytest.raises(ValueError, match=message):
+        dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc)
