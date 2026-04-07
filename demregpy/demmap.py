@@ -108,17 +108,11 @@ def demmap(
         dem_norm0 = np.ones((na, nt))
     elif np.isscalar(dem_norm0):
         raise ValueError("dem_norm0 must be an array matching (na, nt), not a scalar")
-    # set up some arrays
     dem = np.zeros([na, nt])
     edem = np.zeros([na, nt])
     elogt = np.zeros([na, nt])
-    np.zeros([nt, nf])
-    np.zeros([nf, nt])
-    np.zeros([nf, nt])
     chisq = np.zeros([na])
-    np.zeros([nt, nt])
     dn_reg = np.zeros([na, nf])
-    np.zeros([nf])
     # do we have enough DEM's to make parallel make sense?
     if (na >= 200):
         n_par = 100
@@ -300,18 +294,14 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         dem_norm0 = np.ones(nt)
     elif np.isscalar(dem_norm0):
         raise ValueError("dem_norm0 must be an array matching (nt,), not a scalar")
-    # nmu=42
-    ltt = min(logt)+1e-8+(max(logt)-min(logt))*np.arange(51)/(52-1.0)
+    ltt = np.min(logt) + 1e-8 + (np.max(logt) - np.min(logt)) * np.arange(51) / (52 - 1.0)
     dem = np.zeros(nt)
     edem = np.zeros(nt)
     elogt = np.zeros(nt)
     chisq = 0
     dn_reg = np.zeros(nf)
-    rmatrixin = np.zeros([nt, nf])
-    filt = np.zeros([nf, nt])
-    for kk in np.arange(nf):
-        # response matrix
-        rmatrixin[:, kk] = rmatrix[:, kk]/ednin[kk]
+    rmatrixin = rmatrix / ednin[np.newaxis, :]
+    filt_rhs = np.zeros((nt, nf))
     dn = dnin/ednin
     edn = ednin/ednin
     # checking for Inf and NaN
@@ -351,13 +341,16 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
                 # run reg map
                 lamb = dem_reg_map(sva, svb, U, W, dn, edn, rgt, nmu)
                 # filt, diagonal matrix
-                for kk in np.arange(nf):
-                    filt[kk, kk] = (sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
-                kdag = W@(filt.T@U[:nf, :nf])
+                U_nf = U[:nf, :nf]
+                W_nf = W[:, :nf]
+                sva_nf = sva[:nf]
+                svb_nf_sq = svb[:nf]**2
+                filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
+                kdag = W_nf @ (U_nf * filt_diag[:, None])
                 dr0 = (kdag@dn).squeeze()
                 # only take the positive with certain amount (fcofmx) of max, then make rest small positive
                 fcofmax = 1e-4
-                mask = np.where(dr0 > 0) and (dr0 > fcofmax*np.max(dr0))
+                mask = (dr0 > 0) & (dr0 > fcofmax * np.max(dr0))
                 dem_reg_lwght = np.ones(nt)
                 dem_reg_lwght[mask] = dr0[mask]
             # ~~~~~~~~~~~~~~~~~
@@ -376,6 +369,10 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         else:
             L = np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
         sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
+        U_nf = U[:nf, :nf]
+        W_nf = W[:, :nf]
+        sva_nf = sva[:nf]
+        svb_nf_sq = svb[:nf]**2
         #  Now loop until positive solution or max_iter reached
         while ((ndem > 0) and (piter < max_iter)):
             # #make L from 1/dem reg scaled by dlogt and diagonalise
@@ -383,9 +380,8 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
             # #call gsvd and reg map
             # sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
             lamb = dem_reg_map(sva, svb, U, W, dn, edn, rgt, nmu)
-            for kk in np.arange(nf):
-                filt[kk, kk] = (sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
-            kdag = W@(filt.T@U[:nf, :nf])
+            filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
+            kdag = W_nf @ (U_nf * filt_diag[:, None])
 
             dem_reg_out = (kdag@dn).squeeze()
 
@@ -401,8 +397,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         # work out the chisquared
         chisq = np.sum(residuals**2)/(nf)
         # do error calculations on dem
-        delxi2 = kdag@kdag.T
-        edem = np.sqrt(np.diag(delxi2))
+        edem = np.sqrt(np.sum(kdag**2, axis=1))
         kdagk = kdag@rmatrixin.T
         elogt = np.zeros(nt)
         for kk in np.arange(nt):
@@ -443,14 +438,11 @@ def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
 
     """
     nf = data.shape[0]
-    nreg = sigmaa.shape[0]
-    arg = np.zeros([nreg, nmu])
-    discr = np.zeros([nmu])
     sigs = sigmaa[:nf]/sigmab[:nf]
-    maxx = max(sigs)
+    maxx = np.max(sigs)
     # minx=min(sigs)**2.0*1E-2
     # Useful to make the lower limit smaller?
-    minx = min(sigs)**2.0*1E-4
+    minx = np.min(sigs)**2.0*1E-4
     minx = max(minx, np.finfo(float).tiny)
     # Range from original non-map code
     # maxx=max(sigs)*1E3
@@ -463,11 +455,11 @@ def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
     log_mu = log_min + np.arange(nmu) * step
     log_mu = np.clip(log_mu, log_min, log_max)
     mu = np.exp(log_mu)
-    for kk in np.arange(nf):
-        coef = data@U[kk, :]
-        for ii in np.arange(nmu):
-            arg[kk, ii] = (mu[ii]*sigmab[kk]**2*coef/(sigmaa[kk]**2+mu[ii]*sigmab[kk]**2))**2
-    discr = np.sum(arg, axis=0)-np.sum(err**2)*reg_tweak
+    coef = U[:nf, :] @ data
+    sigmab_sq = sigmab[:nf, None]**2
+    numer = mu[None, :] * sigmab_sq * coef[:, None]
+    denom = sigmaa[:nf, None]**2 + mu[None, :] * sigmab_sq
+    discr = np.sum((numer / denom)**2, axis=0) - np.sum(err**2) * reg_tweak
     return mu[np.argmin(np.abs(discr))]
 
 
@@ -504,7 +496,7 @@ def dem_inv_gsvd(A, B):
     # calculate the matrix A*B^-1
     AB1 = A@pinv(B)
     sze = AB1.shape
-    C = np.zeros([max(sze), max(sze)])
+    C = np.zeros((max(sze), max(sze)), dtype=AB1.dtype)
     C[:sze[0], :sze[1]] = AB1
     # use np.linalg.svd to calculate the singular value decomposition
     u, s, v = svd(C, full_matrices=True, compute_uv=True)
@@ -514,9 +506,8 @@ def dem_inv_gsvd(A, B):
     alpha = s*beta
     # diagonalise alpha and beta into SA and SB
     # onea=np.diag(alpha)
-    oneb = np.diag(beta)
     # calculate the w matrix
     # w=inv(inv(onea)@transpose(u)@A)
-    w2 = pinv(inv(oneb)@v@B)
+    w2 = pinv((v / beta[:, None]) @ B)
     # return gsvd products, transposing v as we do.
     return alpha, beta, u.T[:, :sze[0]], v.T, w2
