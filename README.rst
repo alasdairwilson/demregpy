@@ -27,10 +27,10 @@ If you use generative AI tools as an aid in developing code or documentation cha
 License
 -------
 
-This project is Copyright (c) def and licensed under
-the terms of the BSD 3-Clause license. This package is based upon
+This project is Copyright (c) Alasdair Wilson and licensed under
+the terms of the MIT license. This package is based upon
 the `Openastronomy packaging guide <https://github.com/OpenAstronomy/packaging-guide>`_
-which is licensed under the BSD 3-clause licence. See the licenses folder for
+which is licensed under the BSD 3-clause licence. See the license files for
 more information.
 
 Contributing
