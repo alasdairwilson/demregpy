@@ -104,17 +104,15 @@ def demmap(
     na = dd.shape[0]
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
-    # set up some arrays
+    if dem_norm0 is None:
+        dem_norm0 = np.ones((na, nt))
+    elif np.isscalar(dem_norm0):
+        raise ValueError("dem_norm0 must be an array matching (na, nt), not a scalar")
     dem = np.zeros([na, nt])
     edem = np.zeros([na, nt])
     elogt = np.zeros([na, nt])
-    np.zeros([nt, nf])
-    np.zeros([nf, nt])
-    np.zeros([nf, nt])
     chisq = np.zeros([na])
-    np.zeros([nt, nt])
     dn_reg = np.zeros([na, nf])
-    np.zeros([nf])
     # do we have enough DEM's to make parallel make sense?
     if (na >= 200):
         n_par = 100
@@ -170,7 +168,7 @@ def demmap(
 
 def dem_unwrap(
     dn, ed, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-    rgt_fact=1.5, dem_norm0=0, nmu=42, warn=False, l_emd=False
+    rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False
 ):
     """
     Execute a series of DEM calculations in serial when provided an array of DEM input params.
@@ -220,6 +218,10 @@ def dem_unwrap(
     ndem = dn.shape[0]
     nt = logt.shape[0]
     nf = dn.shape[1]
+    if dem_norm0 is None:
+        dem_norm0 = np.ones((ndem, nt))
+    elif np.isscalar(dem_norm0):
+        raise ValueError("dem_norm0 must be an array matching (ndem, nt), not a scalar")
     dem = np.zeros([ndem, nt])
     edem = np.zeros([ndem, nt])
     elogt = np.zeros([ndem, nt])
@@ -240,7 +242,7 @@ def dem_unwrap(
 
 
 def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-            rgt_fact=1.5, dem_norm0=0, nmu=42, warn=True, l_emd=False):
+            rgt_fact=1.5, dem_norm0=None, nmu=42, warn=True, l_emd=False):
     """
     Calculate the DEM etc. of a single pixel.
 
@@ -288,117 +290,161 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     """
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
-    # nmu=42
-    ltt = min(logt)+1e-8+(max(logt)-min(logt))*np.arange(51)/(52-1.0)
+    if not np.all(np.isfinite(dnin)):
+        raise ValueError("dnin must contain only finite values")
+    if np.any(dnin < 0):
+        raise ValueError("dnin must be non-negative")
+    user_supplied_dem_norm0 = dem_norm0 is not None
+    if dem_norm0 is None:
+        dem_norm0 = np.ones(nt)
+    elif np.isscalar(dem_norm0):
+        raise ValueError("dem_norm0 must be an array matching (nt,), not a scalar")
+    if nt < 3:
+        raise ValueError("logt/dlogt must define at least 3 DEM bins")
+    ltt = np.min(logt) + 1e-8 + (np.max(logt) - np.min(logt)) * np.arange(51) / (52 - 1.0)
     dem = np.zeros(nt)
     edem = np.zeros(nt)
     elogt = np.zeros(nt)
     chisq = 0
     dn_reg = np.zeros(nf)
-    rmatrixin = np.zeros([nt, nf])
-    filt = np.zeros([nf, nt])
-    for kk in np.arange(nf):
-        # response matrix
-        rmatrixin[:, kk] = rmatrix[:, kk]/ednin[kk]
+    rmatrixin = rmatrix / ednin[np.newaxis, :]
+    filt_rhs = np.zeros((nt, nf))
     dn = dnin/ednin
     edn = ednin/ednin
-    # checking for Inf and NaN
-    if (sum(np.isnan(dn)) == 0 and sum(np.isinf(dn)) == 0 and np.prod(dn) > 0):
-        ndem = 1
-        piter = 0
-        rgt = reg_tweak
-        L = np.zeros([nt, nt])
-        #  If you have supplied an initial guess/constraint normalized DEM then don't
-        #  need to calculate one (either from L=1/sqrt(dLogT) or min of EM loci)
-        # As the call to this now sets dem_norm to array of 1s if nothing provided by user can also test for that
-        # Before calling this dem_norm0 is set to array of 1s if nothing provided by user
-        # So we need to work out some weighting for L or is one provided as dem_norm0 (not 0 or array of 1s)?
-        if (np.prod(dem_norm0) == 1.0 or dem_norm0[0] == 0):
-            # Need to work out a weighting here then, have two approaches:
-            #         1. Do it via the min of em loci - chooses this if gloci, glc=1 from user
-            if (np.sum(glc) > 0.0):
-                gdglc = (glc > 0).nonzero()[0]
-                emloci = np.zeros((nt, gdglc.shape[0]))
-                # for each gloci take the minimum and work out the emission measure
-                for ee in np.arange(gdglc.shape[0]):
-                    emloci[:, ee] = dnin[gdglc[ee]]/(rmatrix[:, gdglc[ee]])
-                # for each temp we take the min of the loci curves as the estimate of the dem
-                dem_model = np.zeros(nt)
-                for ttt in np.arange(nt):
-                    dem_model[ttt] = np.min(emloci[ttt, np.nonzero(emloci[ttt, :])])
-                dem_reg_lwght = dem_model
-            # ~~~~~~~~~~~~~~~~~
-            # 2. Or if nothing selected will run reg once, and use solution as weighting (self norm approach)
-            else:
-                # Calculate the initial constraint matrix
-                # Just a diagonal matrix scaled by dlogT
-                L = np.diag(1.0/np.sqrt(dlogt[:]))
-                # run gsvd
-                sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
-                # run reg map
-                lamb = dem_reg_map(sva, svb, U, W, dn, edn, rgt, nmu)
-                # filt, diagonal matrix
-                for kk in np.arange(nf):
-                    filt[kk, kk] = (sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
-                kdag = W@(filt.T@U[:nf, :nf])
-                dr0 = (kdag@dn).squeeze()
-                # only take the positive with certain amount (fcofmx) of max, then make rest small positive
-                fcofmax = 1e-4
-                mask = np.where(dr0 > 0) and (dr0 > fcofmax*np.max(dr0))
-                dem_reg_lwght = np.ones(nt)
-                dem_reg_lwght[mask] = dr0[mask]
-            # ~~~~~~~~~~~~~~~~~
-            # Just smooth these initial dem_reg_lwght and max sure no value is too small
-            # dem_reg_lwght=(np.convolve(dem_reg_lwght,np.ones(3)/3))[1:-1]/np.max(dem_reg_lwght[:])
-            dem_reg_lwght = (np.convolve(dem_reg_lwght[1:-1], np.ones(5)/5))[1:-1]/np.max(dem_reg_lwght[:])
-            dem_reg_lwght[dem_reg_lwght <= 1e-8] = 1e-8
+    ndem = 1
+    piter = 0
+    rgt = reg_tweak
+    L = np.zeros([nt, nt])
+    #  If you have supplied an initial guess/constraint normalized DEM then don't
+    #  need to calculate one (either from L=1/sqrt(dLogT) or min of EM loci)
+    # As the call to this now sets dem_norm to array of 1s if nothing provided by user can also test for that
+    # Before calling this dem_norm0 is set to array of 1s if nothing provided by user
+    # So we need to work out some weighting for L or is one provided as dem_norm0 (not 0 or array of 1s)?
+    if ((not user_supplied_dem_norm0) or np.all(dem_norm0 == 1.0) or dem_norm0[0] == 0):
+        # Need to work out a weighting here then, have two approaches:
+        #         1. Do it via the min of em loci - chooses this if gloci, glc=1 from user
+        if (np.sum(glc) > 0.0):
+            gdglc = (glc > 0).nonzero()[0]
+            emloci = np.zeros((nt, gdglc.shape[0]))
+            # for each gloci take the minimum and work out the emission measure
+            for ee in np.arange(gdglc.shape[0]):
+                emloci[:, ee] = dnin[gdglc[ee]]/(rmatrix[:, gdglc[ee]])
+            # for each temp we take the min of the loci curves as the estimate of the dem
+            dem_model = np.zeros(nt)
+            for ttt in np.arange(nt):
+                nz = np.nonzero(emloci[ttt, :])[0]
+                dem_model[ttt] = np.min(emloci[ttt, nz]) if nz.size > 0 else 0.0
+            dem_reg_lwght = dem_model
+        # ~~~~~~~~~~~~~~~~~
+        # 2. Or if nothing selected will run reg once, and use solution as weighting (self norm approach)
         else:
-            # Otherwise just set dem_reg to inputted weight
-            dem_reg_lwght = dem_norm0
-        # Now actually do the dem regularisation using the L weighting from above
-        # Faster to do this and the GSVD on R and L before the pos loop
-        if l_emd:
-            # this works better with EMD calc, instead of DEM
-            L = np.diag(1/abs(dem_reg_lwght))
-        else:
-            L = np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
-        sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
-        #  Now loop until positive solution or max_iter reached
-        while ((ndem > 0) and (piter < max_iter)):
-            # #make L from 1/dem reg scaled by dlogt and diagonalise
-            # L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
-            # #call gsvd and reg map
-            # sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
-            lamb = dem_reg_map(sva, svb, U, W, dn, edn, rgt, nmu)
-            for kk in np.arange(nf):
-                filt[kk, kk] = (sva[kk]/(sva[kk]**2+svb[kk]**2*lamb))
-            kdag = W@(filt.T@U[:nf, :nf])
+            # Calculate the initial constraint matrix
+            # Just a diagonal matrix scaled by dlogT
+            ldiag = 1.0 / np.sqrt(dlogt[:])
+            # run gsvd
+            sva, svb, U, V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
+            # run reg map
+            mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
+            lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
+            # filt, diagonal matrix
+            U_nf = U[:nf, :nf]
+            W_nf = W[:, :nf]
+            sva_nf = sva[:nf]
+            svb_nf_sq = svb[:nf]**2
+            filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
+            kdag = W_nf @ (U_nf * filt_diag[:, None])
+            dr0 = (kdag@dn).squeeze()
+            # only take the positive with certain amount (fcofmx) of max, then make rest small positive
+            fcofmax = 1e-4
+            mask = (dr0 > 0) & (dr0 > fcofmax * np.max(dr0))
+            dem_reg_lwght = np.ones(nt)
+            dem_reg_lwght[mask] = dr0[mask]
+        # ~~~~~~~~~~~~~~~~~
+        # Just smooth these initial dem_reg_lwght and max sure no value is too small
+        # dem_reg_lwght=(np.convolve(dem_reg_lwght,np.ones(3)/3))[1:-1]/np.max(dem_reg_lwght[:])
+        dem_reg_lwght = (np.convolve(dem_reg_lwght[1:-1], np.ones(5)/5))[1:-1]/np.max(dem_reg_lwght[:])
+        dem_reg_lwght[dem_reg_lwght <= 1e-8] = 1e-8
+    else:
+        # Otherwise just set dem_reg to inputted weight
+        dem_reg_lwght = dem_norm0
+    # Now actually do the dem regularisation using the L weighting from above
+    # Faster to do this and the GSVD on R and L before the pos loop
+    if l_emd:
+        # this works better with EMD calc, instead of DEM
+        ldiag = 1 / abs(dem_reg_lwght)
+    else:
+        ldiag = np.sqrt(dlogt) / np.sqrt(abs(dem_reg_lwght))
+    sva, svb, U, V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
+    mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
+    U_nf = U[:nf, :nf]
+    W_nf = W[:, :nf]
+    sva_nf = sva[:nf]
+    svb_nf_sq = svb[:nf]**2
+    #  Now loop until positive solution or max_iter reached
+    while ((ndem > 0) and (piter < max_iter)):
+        # #make L from 1/dem reg scaled by dlogt and diagonalise
+        # L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
+        # #call gsvd and reg map
+        # sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
+        lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
+        filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
+        kdag = W_nf @ (U_nf * filt_diag[:, None])
 
-            dem_reg_out = (kdag@dn).squeeze()
+        dem_reg_out = (kdag@dn).squeeze()
 
-            ndem = len(dem_reg_out[dem_reg_out < 0])
-            rgt = rgt_fact*rgt
-            piter += 1
-        if (warn and (piter == max_iter)):
-            print('Warning, positivity loop hit max iterations, so increase max_iter? Or rgt_fact too small?')
-        dem = dem_reg_out
-        # work out the theoretical dn and compare to the input dn
-        dn_reg = (rmatrix.T @ dem_reg_out).squeeze()
-        residuals = (dnin-dn_reg)/ednin
-        # work out the chisquared
-        chisq = np.sum(residuals**2)/(nf)
-        # do error calculations on dem
-        delxi2 = kdag@kdag.T
-        edem = np.sqrt(np.diag(delxi2))
-        kdagk = kdag@rmatrixin.T
-        elogt = np.zeros(nt)
-        for kk in np.arange(nt):
-            rr = np.interp(ltt, logt, kdagk[:, kk])
-            hm_mask = (rr >= max(kdagk[:, kk])/2.)
-            elogt[kk] = dlogt[kk]
-            if (np.sum(hm_mask) > 0):
-                elogt[kk] = (ltt[hm_mask][-1]-ltt[hm_mask][0])/2
+        ndem = len(dem_reg_out[dem_reg_out < 0])
+        rgt = rgt_fact*rgt
+        piter += 1
+    if (warn and (piter == max_iter)):
+        print('Warning, positivity loop hit max iterations, so increase max_iter? Or rgt_fact too small?')
+    dem = dem_reg_out
+    # work out the theoretical dn and compare to the input dn
+    dn_reg = (rmatrix.T @ dem_reg_out).squeeze()
+    residuals = (dnin-dn_reg)/ednin
+    # work out the chisquared
+    chisq = np.sum(residuals**2)/(nf)
+    # do error calculations on dem
+    edem = np.sqrt(np.sum(kdag**2, axis=1))
+    kdagk = kdag@rmatrixin.T
+    kdagk_max = np.max(kdagk, axis=0)
+    elogt = np.zeros(nt)
+    for kk in np.arange(nt):
+        rr = np.interp(ltt, logt, kdagk[:, kk])
+        hm_mask = (rr >= kdagk_max[kk]/2.)
+        elogt[kk] = dlogt[kk]
+        if (np.sum(hm_mask) > 0):
+            elogt[kk] = (ltt[hm_mask][-1]-ltt[hm_mask][0])/2
     return dem, edem, elogt, chisq, dn_reg
+
+
+def _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu):
+    """Precompute the regularization misfit curve for a fixed GSVD."""
+    nf = data.shape[0]
+    sigs = sigmaa[:nf]/sigmab[:nf]
+    maxx = np.max(sigs)
+    minx = np.min(sigs)**2.0*1E-4
+    minx = max(minx, np.finfo(float).tiny)
+    denom = max(nmu - 1.0, 1.0)
+    log_min = np.log(minx)
+    log_max = np.log(maxx)
+    log_max = min(log_max, np.log(np.finfo(float).max))
+    step = (log_max - log_min) / denom
+    log_mu = log_min + np.arange(nmu) * step
+    log_mu = np.clip(log_mu, log_min, log_max)
+    mu = np.exp(log_mu)
+    coef = U[:nf, :] @ data
+    sigmab_sq = sigmab[:nf, None]**2
+    numer = mu[None, :] * sigmab_sq * coef[:, None]
+    denom = sigmaa[:nf, None]**2 + mu[None, :] * sigmab_sq
+    misfit_curve = np.sum((numer / denom)**2, axis=0)
+    err_term = np.sum(err**2)
+    return mu, misfit_curve, err_term
+
+
+def _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak):
+    """Select the regularization parameter for a given target misfit."""
+    discr = misfit_curve - err_term * reg_tweak
+    return mu[np.argmin(np.abs(discr))]
 
 
 def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
@@ -429,26 +475,40 @@ def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
         regularization parameter
 
     """
-    nf = data.shape[0]
-    nreg = sigmaa.shape[0]
-    arg = np.zeros([nreg, nmu])
-    discr = np.zeros([nmu])
-    sigs = sigmaa[:nf]/sigmab[:nf]
-    maxx = max(sigs)
-    # minx=min(sigs)**2.0*1E-2
-    # Useful to make the lower limit smaller?
-    minx = min(sigs)**2.0*1E-4
-    # Range from original non-map code
-    # maxx=max(sigs)*1E3
-    # minx=max(sigs)*1E-15
-    step = (np.log(maxx)-np.log(minx))/(nmu-1.)
-    mu = np.exp(np.arange(nmu)*step)*minx
-    for kk in np.arange(nf):
-        coef = data@U[kk, :]
-        for ii in np.arange(nmu):
-            arg[kk, ii] = (mu[ii]*sigmab[kk]**2*coef/(sigmaa[kk]**2+mu[ii]*sigmab[kk]**2))**2
-    discr = np.sum(arg, axis=0)-np.sum(err**2)*reg_tweak
-    return mu[np.argmin(np.abs(discr))]
+    mu, misfit_curve, err_term = _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu)
+    return _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak)
+
+
+def _dem_inv_gsvd_from_bdiag(A, bdiag):
+    """GSVD helper for the common case where B is diagonal."""
+    bdiag = np.asarray(bdiag)
+    bdiag_inv = np.divide(
+        1.0,
+        bdiag,
+        out=np.zeros_like(bdiag, dtype=np.result_type(A, bdiag, float)),
+        where=bdiag != 0,
+    )
+    # For diagonal B, A @ pinv(B) is just column scaling by pinv(diag(B)).
+    AB1 = A * bdiag_inv
+    sze = AB1.shape
+    p = max(sze)
+    # Use the rectangular SVD directly, then pad the singular spectrum and U rows
+    # to preserve the output shapes expected by the existing GSVD code.
+    u, s, v = svd(AB1, full_matrices=True, compute_uv=True)
+    s_pad = np.zeros(p, dtype=s.dtype)
+    s_pad[:s.shape[0]] = s
+    beta = 1.0 / np.sqrt(1 + s_pad**2)
+    alpha = s_pad * beta
+    U = np.zeros((p, sze[0]), dtype=u.dtype)
+    U[:u.shape[1], :] = u.T
+    vb = v / beta[:, None]
+    w2 = pinv(vb * bdiag[np.newaxis, :])
+    return alpha, beta, U, v.T, w2
+
+
+def dem_inv_gsvd_diag(A, bdiag):
+    """Perform the GSVD of A with diagonal B defined by its diagonal entries."""
+    return _dem_inv_gsvd_from_bdiag(A, bdiag)
 
 
 def dem_inv_gsvd(A, B):
@@ -481,22 +541,24 @@ def dem_inv_gsvd(A, B):
     w2 : ndarray
         decomposition product weights.
     """
+    bdiag = np.diagonal(B)
+    if np.all(B == np.diag(bdiag)):
+        return _dem_inv_gsvd_from_bdiag(A, bdiag)
     # calculate the matrix A*B^-1
-    AB1 = A@inv(B)
+    AB1 = A@pinv(B)
     sze = AB1.shape
-    C = np.zeros([max(sze), max(sze)])
-    C[:sze[0], :sze[1]] = AB1
-    # use np.linalg.svd to calculate the singular value decomposition
-    u, s, v = svd(C, full_matrices=True, compute_uv=True)
-    # U, S, Vh = svd(AB1, full_matrices=False)
+    p = max(sze)
+    # Keep the historical output shapes while avoiding explicit padding of the
+    # matrix passed into SVD.
+    u, s, v = svd(AB1, full_matrices=True, compute_uv=True)
     # from the svd products calculate the diagonal components form the gsvd
-    beta = 1./np.sqrt(1+s**2)
-    alpha = s*beta
-    # diagonalise alpha and beta into SA and SB
-    # onea=np.diag(alpha)
-    oneb = np.diag(beta)
+    s_pad = np.zeros(p, dtype=s.dtype)
+    s_pad[:s.shape[0]] = s
+    beta = 1./np.sqrt(1+s_pad**2)
+    alpha = s_pad*beta
+    U = np.zeros((p, sze[0]), dtype=u.dtype)
+    U[:u.shape[1], :] = u.T
     # calculate the w matrix
-    # w=inv(inv(onea)@transpose(u)@A)
-    w2 = pinv(inv(oneb)@v@B)
+    w2 = pinv((v / beta[:, None]) @ B)
     # return gsvd products, transposing v as we do.
-    return alpha, beta, u.T[:, :sze[0]], v.T, w2
+    return alpha, beta, U, v.T, w2
