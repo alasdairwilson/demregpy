@@ -94,6 +94,19 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         The simulated dn counts, shape nx*ny*nf. This is obtained by multiplying the DEM(T) by the filter
         response K(f,T) for each channel, very important for comparing with the initial data.
     """
+    if len(temps) < 4:
+        raise ValueError("temps must define at least 3 DEM bins")
+
+    if dem_norm0 is not None:
+        dem_norm0 = np.asarray(dem_norm0)
+        finite_mask = np.isfinite(dem_norm0)
+        if not finite_mask.all():
+            if finite_mask.any():
+                raise ValueError("dem_norm0 must contain only finite values")
+            dem_norm0 = None
+        elif np.all(dem_norm0 == 0):
+            dem_norm0 = None
+
     # create our bin averages:
     logt = ([np.mean([(np.log10(temps[i])), np.log10(temps[i+1])]) for i in np.arange(0, len(temps)-1)])
     # and widths
@@ -106,8 +119,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     sze = dn_in.shape
 
     # for a single pixel
-    if dem_norm0 is None or np.all(~np.isfinite(dem_norm0)) or np.all(dem_norm0 == 0):
-        dem_norm0 = np.ones(np.hstack((dn_in.shape[0:-1], nt)).astype(int))
+    dem0 = None
     # for a single pixel
     if len(sze) == 1:
         nx = 1
@@ -117,7 +129,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dn[0, 0, :] = dn_in
         edn = np.zeros([1, 1, nf])
         edn[0, 0, :] = edn_in
-        if dem_norm0 is not None and np.isfinite(dem_norm0).all():
+        if dem_norm0 is not None:
             dem0 = np.zeros([1, 1, nt])
             dem0[0, 0, :] = dem_norm0
         if warn is False:
@@ -134,7 +146,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dn[:, 0, :] = dn_in
         edn = np.zeros([nx, 1, nf])
         edn[:, 0, :] = edn_in
-        if dem_norm0 is not None and np.isfinite(dem_norm0).all():
+        if dem_norm0 is not None:
             dem0 = np.zeros([nx, 1, nt])
             dem0[:, 0, :] = dem_norm0
         if nmu <= 40:
@@ -149,7 +161,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dn[:, :, :] = dn_in
         edn = np.zeros([nx, ny, nf])
         edn[:, :, :] = edn_in
-        if dem_norm0 is not None and np.isfinite(dem_norm0).all():
+        if dem_norm0 is not None:
             dem0 = np.zeros([nx, ny, nt])
             dem0[:, :, :] = dem_norm0
         if nmu <= 40:
@@ -181,10 +193,11 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     # check the tresp has no elements <0
     # replace any it finds with the minimum tresp from the same filter
     for i in np.arange(0, nf):
-        # keep good TR data
-        truse[tresp[:, i] > 0] = tresp[tresp[:, i] > 0]
-        # set bad data to the minimum
-        truse[tresp[:, i] <= 0, i] = np.min(tresp[tresp[:, i] > 0], axis=0)[i]
+        good = tresp[:, i] > 0
+        if not np.any(good):
+            raise ValueError(f"tresp filter {i} must contain at least one positive response value")
+        min_positive = np.min(tresp[good, i])
+        truse[:, i] = np.where(good, tresp[:, i], min_positive)
 
     tr = np.zeros([nt, nf])
     for i in np.arange(nf):
@@ -223,7 +236,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     # *****************************************************
     # Should always be just running the first part of if here as setting dem01d to array of 1s if nothing given
     # So now more a check dimensions of things are correct
-    if (dem0.ndim == dn.ndim):
+    if dem0 is not None and (dem0.ndim == dn.ndim):
         dem01d = np.reshape(dem0, [nx*ny, nt])
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt, dlogt, glc,

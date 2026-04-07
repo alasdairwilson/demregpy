@@ -290,10 +290,13 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     """
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
+    user_supplied_dem_norm0 = dem_norm0 is not None
     if dem_norm0 is None:
         dem_norm0 = np.ones(nt)
     elif np.isscalar(dem_norm0):
         raise ValueError("dem_norm0 must be an array matching (nt,), not a scalar")
+    if nt < 3:
+        raise ValueError("logt/dlogt must define at least 3 DEM bins")
     ltt = np.min(logt) + 1e-8 + (np.max(logt) - np.min(logt)) * np.arange(51) / (52 - 1.0)
     dem = np.zeros(nt)
     edem = np.zeros(nt)
@@ -315,7 +318,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         # As the call to this now sets dem_norm to array of 1s if nothing provided by user can also test for that
         # Before calling this dem_norm0 is set to array of 1s if nothing provided by user
         # So we need to work out some weighting for L or is one provided as dem_norm0 (not 0 or array of 1s)?
-        if (np.prod(dem_norm0) == 1.0 or dem_norm0[0] == 0):
+        if ((not user_supplied_dem_norm0) or np.all(dem_norm0 == 1.0) or dem_norm0[0] == 0):
             # Need to work out a weighting here then, have two approaches:
             #         1. Do it via the min of em loci - chooses this if gloci, glc=1 from user
             if (np.sum(glc) > 0.0):

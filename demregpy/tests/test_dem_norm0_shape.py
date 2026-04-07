@@ -132,7 +132,6 @@ def test_dem_pix_prefers_user_dem_norm0_over_gloci(monkeypatch):
     np.testing.assert_allclose(captured[0], expected_ldiag, rtol=1e-12, atol=0.0)
 
 
-@pytest.mark.xfail(strict=True, reason="dem_pix ignores some user weights when their product is 1.0")
 def test_dem_pix_honors_custom_dem_norm0_when_product_is_one():
     rmatrix = np.array(
         [

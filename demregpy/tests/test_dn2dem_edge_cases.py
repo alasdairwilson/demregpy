@@ -23,7 +23,6 @@ def _basic_dn2dem_inputs():
     return dn, edn, tresp, tresp_logt, temps
 
 
-@pytest.mark.xfail(strict=True, reason="dn2dem crashes on partially non-finite dem_norm0")
 def test_dn2dem_rejects_partially_nonfinite_dem_norm0():
     dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
     dem_norm0 = np.array([1.0, np.nan, 1.0, 1.0, 1.0, 1.0, 1.0])
@@ -32,7 +31,6 @@ def test_dn2dem_rejects_partially_nonfinite_dem_norm0():
         dn2dem(dn, edn, tresp, tresp_logt, temps, dem_norm0=dem_norm0, warn=False)
 
 
-@pytest.mark.xfail(strict=True, reason="dn2dem leaks non-positive tresp values into log-space interpolation")
 def test_dn2dem_handles_non_positive_tresp_entries():
     dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
     tresp[0, 0] = -1.0
@@ -54,7 +52,6 @@ def test_dn2dem_handles_non_positive_tresp_entries():
     assert np.isfinite(dn_reg).all()
 
 
-@pytest.mark.xfail(strict=True, reason="dn2dem raises an unclear error when a filter has no positive response values")
 def test_dn2dem_rejects_filter_with_no_positive_tresp_values():
     dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
     tresp[:, 0] = -1.0
@@ -63,7 +60,6 @@ def test_dn2dem_rejects_filter_with_no_positive_tresp_values():
         dn2dem(dn, edn, tresp, tresp_logt, temps, warn=False)
 
 
-@pytest.mark.xfail(strict=True, reason="dn2dem does not validate minimum temperature-grid length before dem_pix")
 def test_dn2dem_rejects_too_short_temperature_grid():
     dn = np.array([1.0, 2.0])
     edn = np.array([0.1, 0.2])
