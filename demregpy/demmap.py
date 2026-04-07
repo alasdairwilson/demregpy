@@ -486,15 +486,19 @@ def _dem_inv_gsvd_from_bdiag(A, bdiag):
     # For diagonal B, A @ pinv(B) is just column scaling by pinv(diag(B)).
     AB1 = A * bdiag_inv
     sze = AB1.shape
-    C = np.zeros((max(sze), max(sze)), dtype=AB1.dtype)
-    C[:sze[0], :sze[1]] = AB1
-    # Keep the padded full SVD behavior to preserve the established numerics.
-    u, s, v = svd(C, full_matrices=True, compute_uv=True)
-    beta = 1.0 / np.sqrt(1 + s**2)
-    alpha = s * beta
+    p = max(sze)
+    # Use the rectangular SVD directly, then pad the singular spectrum and U rows
+    # to preserve the output shapes expected by the existing GSVD code.
+    u, s, v = svd(AB1, full_matrices=True, compute_uv=True)
+    s_pad = np.zeros(p, dtype=s.dtype)
+    s_pad[:s.shape[0]] = s
+    beta = 1.0 / np.sqrt(1 + s_pad**2)
+    alpha = s_pad * beta
+    U = np.zeros((p, sze[0]), dtype=u.dtype)
+    U[:u.shape[1], :] = u.T
     vb = v / beta[:, None]
     w2 = pinv(vb * bdiag[np.newaxis, :])
-    return alpha, beta, u.T[:, :sze[0]], v.T, w2
+    return alpha, beta, U, v.T, w2
 
 
 def dem_inv_gsvd_diag(A, bdiag):
@@ -538,14 +542,18 @@ def dem_inv_gsvd(A, B):
     # calculate the matrix A*B^-1
     AB1 = A@pinv(B)
     sze = AB1.shape
-    C = np.zeros((max(sze), max(sze)), dtype=AB1.dtype)
-    C[:sze[0], :sze[1]] = AB1
-    # use np.linalg.svd to calculate the singular value decomposition
-    u, s, v = svd(C, full_matrices=True, compute_uv=True)
+    p = max(sze)
+    # Keep the historical output shapes while avoiding explicit padding of the
+    # matrix passed into SVD.
+    u, s, v = svd(AB1, full_matrices=True, compute_uv=True)
     # from the svd products calculate the diagonal components form the gsvd
-    beta = 1./np.sqrt(1+s**2)
-    alpha = s*beta
+    s_pad = np.zeros(p, dtype=s.dtype)
+    s_pad[:s.shape[0]] = s
+    beta = 1./np.sqrt(1+s_pad**2)
+    alpha = s_pad*beta
+    U = np.zeros((p, sze[0]), dtype=u.dtype)
+    U[:u.shape[1], :] = u.T
     # calculate the w matrix
     w2 = pinv((v / beta[:, None]) @ B)
     # return gsvd products, transposing v as we do.
-    return alpha, beta, u.T[:, :sze[0]], v.T, w2
+    return alpha, beta, U, v.T, w2
