@@ -335,9 +335,9 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
             else:
                 # Calculate the initial constraint matrix
                 # Just a diagonal matrix scaled by dlogT
-                L = np.diag(1.0/np.sqrt(dlogt[:]))
+                ldiag = 1.0 / np.sqrt(dlogt[:])
                 # run gsvd
-                sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
+                sva, svb, U, V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
                 # run reg map
                 mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
                 lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
@@ -366,10 +366,10 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         # Faster to do this and the GSVD on R and L before the pos loop
         if l_emd:
             # this works better with EMD calc, instead of DEM
-            L = np.diag(1/abs(dem_reg_lwght))
+            ldiag = 1 / abs(dem_reg_lwght)
         else:
-            L = np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
-        sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
+            ldiag = np.sqrt(dlogt) / np.sqrt(abs(dem_reg_lwght))
+        sva, svb, U, V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
         mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
         U_nf = U[:nf, :nf]
         W_nf = W[:, :nf]
@@ -474,6 +474,34 @@ def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
     return _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak)
 
 
+def _dem_inv_gsvd_from_bdiag(A, bdiag):
+    """GSVD helper for the common case where B is diagonal."""
+    bdiag = np.asarray(bdiag)
+    bdiag_inv = np.divide(
+        1.0,
+        bdiag,
+        out=np.zeros_like(bdiag, dtype=np.result_type(A, bdiag, float)),
+        where=bdiag != 0,
+    )
+    # For diagonal B, A @ pinv(B) is just column scaling by pinv(diag(B)).
+    AB1 = A * bdiag_inv
+    sze = AB1.shape
+    C = np.zeros((max(sze), max(sze)), dtype=AB1.dtype)
+    C[:sze[0], :sze[1]] = AB1
+    # Keep the padded full SVD behavior to preserve the established numerics.
+    u, s, v = svd(C, full_matrices=True, compute_uv=True)
+    beta = 1.0 / np.sqrt(1 + s**2)
+    alpha = s * beta
+    vb = v / beta[:, None]
+    w2 = pinv(vb * bdiag[np.newaxis, :])
+    return alpha, beta, u.T[:, :sze[0]], v.T, w2
+
+
+def dem_inv_gsvd_diag(A, bdiag):
+    """Perform the GSVD of A with diagonal B defined by its diagonal entries."""
+    return _dem_inv_gsvd_from_bdiag(A, bdiag)
+
+
 def dem_inv_gsvd(A, B):
     """Perform the generalised singular value decomposition of two matrices A,B.
 
@@ -506,34 +534,18 @@ def dem_inv_gsvd(A, B):
     """
     bdiag = np.diagonal(B)
     if np.all(B == np.diag(bdiag)):
-        bdiag_inv = np.divide(
-            1.0,
-            bdiag,
-            out=np.zeros_like(bdiag, dtype=np.result_type(A, B, float)),
-            where=bdiag != 0,
-        )
-        # For diagonal B, A @ pinv(B) is just column scaling by pinv(diag(B)).
-        AB1 = A * bdiag_inv
-    else:
-        # calculate the matrix A*B^-1
-        AB1 = A@pinv(B)
+        return _dem_inv_gsvd_from_bdiag(A, bdiag)
+    # calculate the matrix A*B^-1
+    AB1 = A@pinv(B)
     sze = AB1.shape
     C = np.zeros((max(sze), max(sze)), dtype=AB1.dtype)
     C[:sze[0], :sze[1]] = AB1
     # use np.linalg.svd to calculate the singular value decomposition
     u, s, v = svd(C, full_matrices=True, compute_uv=True)
-    # U, S, Vh = svd(AB1, full_matrices=False)
     # from the svd products calculate the diagonal components form the gsvd
     beta = 1./np.sqrt(1+s**2)
     alpha = s*beta
-    # diagonalise alpha and beta into SA and SB
-    # onea=np.diag(alpha)
     # calculate the w matrix
-    # w=inv(inv(onea)@transpose(u)@A)
-    vb = v / beta[:, None]
-    if np.all(B == np.diag(bdiag)):
-        w2 = pinv(vb * bdiag[np.newaxis, :])
-    else:
-        w2 = pinv(vb @ B)
+    w2 = pinv((v / beta[:, None]) @ B)
     # return gsvd products, transposing v as we do.
     return alpha, beta, u.T[:, :sze[0]], v.T, w2
