@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 import numpy as np
 import pytest
-from sunpy.map import Map
 
+from sunpy.map import Map
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "aia"
 WAVES = [94, 131, 171, 193, 211, 335]
@@ -28,5 +26,5 @@ def test_aia_cutout_shapes():
 
 def test_aia_cutout_ordering():
     maps = [Map(p) for p in _files()]
-    waves = [int(round(m.wavelength.to_value())) for m in maps]
+    waves = [round(m.wavelength.to_value()) for m in maps]
     assert waves == sorted(waves)

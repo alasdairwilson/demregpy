@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Time dem_pix end-to-end on synthetic inputs.
 """
 
-from __future__ import annotations
-
-import argparse
 import timeit
+import argparse
 
 import numpy as np
 

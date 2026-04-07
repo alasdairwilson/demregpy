@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Benchmark dn2dem on saved AIA cutouts.
 """
 
-from __future__ import annotations
-
+import timeit
 import argparse
 from pathlib import Path
-import timeit
 
 import numpy as np
 import scipy.io as io
+
 from sunpy.map import Map
 
 from demregpy import dn2dem
 from demregpy.tresp import aia_tresp
-
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "demregpy" / "tests" / "data" / "aia"
 WAVES = [94, 131, 171, 193, 211, 335]
@@ -25,9 +22,7 @@ TIME_TAG = "2014-01-01T00-00-00"
 
 def load_cutouts():
     files = [DATA_DIR / f"aia_synoptic_{TIME_TAG}_{w:03d}.fits" for w in WAVES]
-    maps = [Map(p) for p in files]
-    maps = sorted(maps, key=lambda x: x.wavelength)
-    return maps
+    return sorted((Map(p) for p in files), key=lambda x: x.wavelength)
 
 
 def load_response():

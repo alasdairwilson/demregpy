@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import scipy.io as io
+
 from sunpy.map import Map
 
 from demregpy import dn2dem

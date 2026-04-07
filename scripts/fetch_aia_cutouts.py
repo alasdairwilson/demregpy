@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Download six AIA synoptic images and save them as test data.
 
 Requires network access and SunPy.
 """
 
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
 
 from astropy import time as atime
 from astropy import units as u
+
 from sunpy.map import Map
 from sunpy.net import Fido, attrs
 
@@ -24,7 +22,7 @@ SEARCH_SECONDS = 60
 
 def _wave_value(value) -> int:
     if hasattr(value, "to_value"):
-        return int(round(value.to_value(u.angstrom)))
+        return round(value.to_value(u.angstrom))
     return int(value)
 
 
@@ -52,9 +50,7 @@ def fetch_aia_maps(download_dir: Path):
     files = Fido.fetch(*selected, path=str(download_dir / "{file}"))
     if len(files) != len(target_waves):
         raise RuntimeError(f"Expected {len(target_waves)} files, fetched {len(files)}")
-    maps = [Map(f) for f in files]
-    maps = sorted(maps, key=lambda x: x.wavelength)
-    return maps
+    return sorted((Map(f) for f in files), key=lambda x: x.wavelength)
 
 
 def main() -> int:
@@ -79,7 +75,7 @@ def main() -> int:
     maps = fetch_aia_maps(download_dir)
 
     for m in maps:
-        w = int(round(m.wavelength.to_value(u.angstrom)))
+        w = round(m.wavelength.to_value(u.angstrom))
         out = output_dir / f"aia_synoptic_{TIME_STR.replace(':', '-')}_{w:03d}.fits"
         m.save(out, overwrite=True)
         print(f"saved {out}")
