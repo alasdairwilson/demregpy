@@ -339,7 +339,8 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
                 # run gsvd
                 sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
                 # run reg map
-                lamb = dem_reg_map(sva, svb, U, W, dn, edn, rgt, nmu)
+                mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
+                lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
                 # filt, diagonal matrix
                 U_nf = U[:nf, :nf]
                 W_nf = W[:, :nf]
@@ -369,6 +370,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         else:
             L = np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
         sva, svb, U, V, W = dem_inv_gsvd(rmatrixin.T, L)
+        mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
         U_nf = U[:nf, :nf]
         W_nf = W[:, :nf]
         sva_nf = sva[:nf]
@@ -379,7 +381,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
             # L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
             # #call gsvd and reg map
             # sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
-            lamb = dem_reg_map(sva, svb, U, W, dn, edn, rgt, nmu)
+            lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
             filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
             kdag = W_nf @ (U_nf * filt_diag[:, None])
 
@@ -399,14 +401,45 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         # do error calculations on dem
         edem = np.sqrt(np.sum(kdag**2, axis=1))
         kdagk = kdag@rmatrixin.T
+        kdagk_max = np.max(kdagk, axis=0)
         elogt = np.zeros(nt)
         for kk in np.arange(nt):
             rr = np.interp(ltt, logt, kdagk[:, kk])
-            hm_mask = (rr >= max(kdagk[:, kk])/2.)
+            hm_mask = (rr >= kdagk_max[kk]/2.)
             elogt[kk] = dlogt[kk]
             if (np.sum(hm_mask) > 0):
                 elogt[kk] = (ltt[hm_mask][-1]-ltt[hm_mask][0])/2
     return dem, edem, elogt, chisq, dn_reg
+
+
+def _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu):
+    """Precompute the regularization misfit curve for a fixed GSVD."""
+    nf = data.shape[0]
+    sigs = sigmaa[:nf]/sigmab[:nf]
+    maxx = np.max(sigs)
+    minx = np.min(sigs)**2.0*1E-4
+    minx = max(minx, np.finfo(float).tiny)
+    denom = max(nmu - 1.0, 1.0)
+    log_min = np.log(minx)
+    log_max = np.log(maxx)
+    log_max = min(log_max, np.log(np.finfo(float).max))
+    step = (log_max - log_min) / denom
+    log_mu = log_min + np.arange(nmu) * step
+    log_mu = np.clip(log_mu, log_min, log_max)
+    mu = np.exp(log_mu)
+    coef = U[:nf, :] @ data
+    sigmab_sq = sigmab[:nf, None]**2
+    numer = mu[None, :] * sigmab_sq * coef[:, None]
+    denom = sigmaa[:nf, None]**2 + mu[None, :] * sigmab_sq
+    misfit_curve = np.sum((numer / denom)**2, axis=0)
+    err_term = np.sum(err**2)
+    return mu, misfit_curve, err_term
+
+
+def _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak):
+    """Select the regularization parameter for a given target misfit."""
+    discr = misfit_curve - err_term * reg_tweak
+    return mu[np.argmin(np.abs(discr))]
 
 
 def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
@@ -437,30 +470,8 @@ def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
         regularization parameter
 
     """
-    nf = data.shape[0]
-    sigs = sigmaa[:nf]/sigmab[:nf]
-    maxx = np.max(sigs)
-    # minx=min(sigs)**2.0*1E-2
-    # Useful to make the lower limit smaller?
-    minx = np.min(sigs)**2.0*1E-4
-    minx = max(minx, np.finfo(float).tiny)
-    # Range from original non-map code
-    # maxx=max(sigs)*1E3
-    # minx=max(sigs)*1E-15
-    denom = max(nmu - 1.0, 1.0)
-    log_min = np.log(minx)
-    log_max = np.log(maxx)
-    log_max = min(log_max, np.log(np.finfo(float).max))
-    step = (log_max - log_min) / denom
-    log_mu = log_min + np.arange(nmu) * step
-    log_mu = np.clip(log_mu, log_min, log_max)
-    mu = np.exp(log_mu)
-    coef = U[:nf, :] @ data
-    sigmab_sq = sigmab[:nf, None]**2
-    numer = mu[None, :] * sigmab_sq * coef[:, None]
-    denom = sigmaa[:nf, None]**2 + mu[None, :] * sigmab_sq
-    discr = np.sum((numer / denom)**2, axis=0) - np.sum(err**2) * reg_tweak
-    return mu[np.argmin(np.abs(discr))]
+    mu, misfit_curve, err_term = _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu)
+    return _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak)
 
 
 def dem_inv_gsvd(A, B):
@@ -493,8 +504,19 @@ def dem_inv_gsvd(A, B):
     w2 : ndarray
         decomposition product weights.
     """
-    # calculate the matrix A*B^-1
-    AB1 = A@pinv(B)
+    bdiag = np.diagonal(B)
+    if np.all(B == np.diag(bdiag)):
+        bdiag_inv = np.divide(
+            1.0,
+            bdiag,
+            out=np.zeros_like(bdiag, dtype=np.result_type(A, B, float)),
+            where=bdiag != 0,
+        )
+        # For diagonal B, A @ pinv(B) is just column scaling by pinv(diag(B)).
+        AB1 = A * bdiag_inv
+    else:
+        # calculate the matrix A*B^-1
+        AB1 = A@pinv(B)
     sze = AB1.shape
     C = np.zeros((max(sze), max(sze)), dtype=AB1.dtype)
     C[:sze[0], :sze[1]] = AB1
@@ -508,6 +530,10 @@ def dem_inv_gsvd(A, B):
     # onea=np.diag(alpha)
     # calculate the w matrix
     # w=inv(inv(onea)@transpose(u)@A)
-    w2 = pinv((v / beta[:, None]) @ B)
+    vb = v / beta[:, None]
+    if np.all(B == np.diag(bdiag)):
+        w2 = pinv(vb * bdiag[np.newaxis, :])
+    else:
+        w2 = pinv(vb @ B)
     # return gsvd products, transposing v as we do.
     return alpha, beta, u.T[:, :sze[0]], v.T, w2
