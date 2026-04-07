@@ -23,24 +23,30 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+aia = [
+  "scipy",
+  "sunpy[map]",
+]
+responses = [
+  "demregpy[aia]",
+]
 tests = [
+  "demregpy[responses]",
   "pytest",
   "pytest-doctestplus",
   "pytest-cov",
   "pytest-xdist",
-  "scipy",
-  "sunpy[map]",
 ]
 docs = [
+  "demregpy[responses]",
   "sphinx",
   "sphinx-automodapi",
   "sphinx-changelog",
   "sunpy-sphinx-theme",
   "packaging",
   "matplotlib",
-  "scipy",
   "sphinx-gallery",
-  "sunpy[map,net]",
+  "sunpy[net]",
   "aiapy",
 ]
 
