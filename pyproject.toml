@@ -28,6 +28,8 @@ tests = [
   "pytest-doctestplus",
   "pytest-cov",
   "pytest-xdist",
+  "scipy",
+  "sunpy[map]",
 ]
 docs = [
   "sphinx",
