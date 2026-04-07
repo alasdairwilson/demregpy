@@ -187,7 +187,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         glc.astype(int)
 
     if len(tresp[0, :]) != nf:
-        print('Tresp needs to be the same number of wavelengths/filters as the data.')
+        raise ValueError("tresp must have the same number of filters as the data")
 
     truse = np.zeros([tresp[:, 0].shape[0], nf])
     # check the tresp has no elements <0

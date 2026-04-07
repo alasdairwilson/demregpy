@@ -75,3 +75,14 @@ def test_dn2dem_rejects_too_short_temperature_grid():
 
     with pytest.raises(ValueError, match="at least"):
         dn2dem(dn, edn, tresp, tresp_logt, temps, warn=False)
+
+
+def test_dn2dem_rejects_tresp_filter_count_mismatch():
+    dn = np.array([1.0, 2.0, 3.0])
+    edn = np.array([0.1, 0.2, 0.3])
+    tresp = np.ones((7, 2))
+    tresp_logt = np.linspace(5.0, 5.6, tresp.shape[0])
+    temps = 10 ** np.linspace(5.0, 5.6, tresp.shape[0] + 1)
+
+    with pytest.raises(ValueError, match="same number of filters"):
+        dn2dem(dn, edn, tresp, tresp_logt, temps, warn=False)
