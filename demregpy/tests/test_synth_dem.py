@@ -90,7 +90,7 @@ def test_synth_dn_ratio_close(centers, norm_mode):
         centers=centers
     )
     norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    _dem, _edem, _elogt, _chisq, dn_reg = dn2dem(
         dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
     )
     ratio = dn_reg / dn_in
@@ -112,7 +112,7 @@ def test_synth_chisq_near_unity(centers, norm_mode):
         centers=centers
     )
     norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    _dem, _edem, _elogt, chisq, _dn_reg = dn2dem(
         dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
     )
     assert 0.5 < chisq < 1.5
@@ -121,14 +121,14 @@ def test_synth_chisq_near_unity(centers, norm_mode):
 @pytest.mark.parametrize("noise_frac", [0.02, 0.05, 0.10])
 @pytest.mark.parametrize("norm_mode", ["default", "gloci", "user"])
 def test_synth_with_noise(noise_frac, norm_mode):
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
+    dn_in, _edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
     norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
     rng = np.random.RandomState(0)
     dn_noisy = dn_in * (1.0 + rng.normal(0.0, noise_frac, size=dn_in.shape))
     dn_noisy = np.maximum(dn_noisy, dn_in * 0.1)
     edn_noisy = noise_frac * dn_in
 
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
         dn_noisy, edn_noisy, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
     )
 
@@ -145,7 +145,7 @@ def test_synth_with_noise(noise_frac, norm_mode):
 def test_synth_reg_tweak_and_rgt_factor(reg_tweak, rgt_fact, norm_mode):
     dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
     norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
         dn_in,
         edn_in,
         trmatrix,
@@ -169,7 +169,7 @@ def test_synth_reg_tweak_and_rgt_factor(reg_tweak, rgt_fact, norm_mode):
 
 
 def test_synth_2d_shapes():
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
+    dn_in, _edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
     nx, ny = 2, 3
     nf = dn_in.shape[0]
     dn = np.zeros((nx, ny, nf))
@@ -195,8 +195,8 @@ def test_synth_2d_shapes():
 
 
 def test_synth_golden_outputs():
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
+    dem, _edem, _elogt, chisq, dn_reg = dn2dem(
         dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False
     )
 
@@ -250,7 +250,7 @@ def test_synth_multi_peak_dem(dem_peaks):
             dem_peaks=dem_peaks
         )
         norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
-        dem, edem, elogt, chisq, dn_reg = dn2dem(
+        _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
             dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
         )
         ratio = dn_reg / dn_in
@@ -259,8 +259,8 @@ def test_synth_multi_peak_dem(dem_peaks):
 
 
 def test_synth_emd_mode_basic():
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
+    _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
         dn_in,
         edn_in,
         trmatrix,
@@ -282,7 +282,7 @@ def test_synth_emd_mode_gloci_and_user():
     dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
     for norm_mode in ["gloci", "user"]:
         norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
-        dem, edem, elogt, chisq, dn_reg = dn2dem(
+        _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
             dn_in,
             edn_in,
             trmatrix,
@@ -302,8 +302,8 @@ def test_synth_emd_mode_gloci_and_user():
 
 @pytest.mark.parametrize("reg_tweak", [0.5, 1.0, 1.5, 2.0])
 def test_synth_emd_reg_tweak(reg_tweak):
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
+    _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
         dn_in,
         edn_in,
         trmatrix,
@@ -323,7 +323,7 @@ def test_synth_emd_reg_tweak(reg_tweak):
 
 
 def test_synth_non_pos_mode_runs():
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
+    dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
     dem, edem, elogt, chisq, dn_reg = dn2dem(
         dn_in,
         edn_in,
@@ -342,7 +342,7 @@ def test_synth_non_pos_mode_runs():
 
 
 def test_synth_l_emd_flag_runs():
-    dn_in, edn_in, trmatrix, tresp_logt, temps, dem_mod, mlogt = _synthetic_case()
+    dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
     dem, edem, elogt, chisq, dn_reg = dn2dem(
         dn_in,
         edn_in,
