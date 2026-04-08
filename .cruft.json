@@ -1,14 +1,14 @@
 {
   "template": "https://github.com/sunpy/package-template",
-  "commit": "7bda107a752e07008add69c658519487eeb15bcb",
+  "commit": "6436220cebd96b3638682023e7149eb78e012fdc",
   "checkout": null,
   "context": {
     "cookiecutter": {
       "package_name": "demregpy",
       "module_name": "demregpy",
-      "short_description": "abc",
-      "author_name": "def",
-      "author_email": "ead",
+      "short_description": "DEM Regularised Inversion Calculation in Python (Hannah & Kontar 2012)",
+      "author_name": "Alasdair Wilson",
+      "author_email": "alasdair.wlsn@gmail.com",
       "project_url": "",
       "github_repo": "alasdairwilson/demregpy",
       "sourcecode_url": "https://github.com/alasdairwilson/demregpy",
@@ -16,13 +16,14 @@
       "documentation_url": "",
       "changelog_url": "",
       "issue_tracker_url": "https://github.com/alasdairwilson/demregpy/issues/",
-      "license": "BSD 3-Clause",
-      "minimum_python_version": "3.11",
+      "license": "MIT",
+      "minimum_python_version": "3.12",
       "use_compiled_extensions": "n",
       "enable_dynamic_dev_versions": "y",
       "include_example_code": "n",
       "include_cruft_update_github_workflow": "y",
       "use_extended_ruff_linting": "y",
+      "matrix_room_id": "",
       "_sphinx_theme": "sunpy",
       "_parent_project": "",
       "_install_requires": "",
@@ -32,7 +33,7 @@
         ".github/workflows/sub_package_update.yml"
       ],
       "_template": "https://github.com/sunpy/package-template",
-      "_commit": "7bda107a752e07008add69c658519487eeb15bcb"
+      "_commit": "6436220cebd96b3638682023e7149eb78e012fdc"
     }
   },
   "directory": null

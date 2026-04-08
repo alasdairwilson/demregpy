@@ -5,9 +5,10 @@
 # http://www.sphinx-doc.org/en/master/config
 
 import datetime
+from pathlib import Path
+
 from packaging.version import Version
 from sunpy_sphinx_theme import PNG_ICON
-from pathlib import Path
 
 # -- Project information -----------------------------------------------------
 
@@ -26,7 +27,7 @@ is_development = _version.is_devrelease
 is_release = not(_version.is_prerelease or _version.is_devrelease)
 
 project = "demregpy"
-author = "def"
+author = "Alasdair Wilson"
 copyright = f"{datetime.datetime.now().year}, {author}"  # noqa: A001
 
 # -- General configuration ---------------------------------------------------
@@ -62,8 +63,7 @@ extensions = [
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The suffix(es) of source filenames.
-# You can specify multiple suffix as a list of string:
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext"}
 
 # The master toctree document.
 master_doc = "index"
