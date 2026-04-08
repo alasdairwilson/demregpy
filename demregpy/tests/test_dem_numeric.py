@@ -247,7 +247,7 @@ def test_aia_synoptic_central_pixel_golden():
     edn = 0.1 * dn + 1e-8
     temps = 10 ** np.linspace(5.7, 7.1, num=17)
 
-    dem, edem, elogt, chisq, dn_reg = dn2dem(
+    dem, _edem, _elogt, chisq, dn_reg = dn2dem(
         dn, edn, trmatrix, tresp_logt, temps, nmu=40, warn=False
     )
 

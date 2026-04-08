@@ -27,7 +27,7 @@ def test_dn2dem_rejects_partially_nonfinite_dem_norm0():
     dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
     dem_norm0 = np.array([1.0, np.nan, 1.0, 1.0, 1.0, 1.0, 1.0])
 
-    with pytest.raises(ValueError, match="dem_norm0.*finite"):
+    with pytest.raises(ValueError, match=r"dem_norm0.*finite"):
         dn2dem(dn, edn, tresp, tresp_logt, temps, dem_norm0=dem_norm0, warn=False)
 
 
