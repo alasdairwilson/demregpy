@@ -2,5 +2,10 @@
 Example Gallery
 ***************
 
-The gallery contains examples of how to use demregpy.
-Each example is a short and self contained how-to guide for performing a specific task.
+The gallery is a collection of small worked examples.
+Each example focuses on one workflow and uses local, deterministic inputs so that the
+documentation build stays reproducible.
+
+The synthetic examples show the main input shapes and inversion modes.
+The AIA examples use the bundled response data together with the local test FITS files
+in ``demregpy/tests/data/aia`` rather than downloading data during the docs build.

@@ -23,6 +23,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+plot = [
+  "matplotlib",
+]
 aia = [
   "scipy",
   "sunpy[map]",
@@ -32,6 +35,7 @@ responses = [
 ]
 tests = [
   "demregpy[responses]",
+  "demregpy[plot]",
   "pytest",
   "pytest-doctestplus",
   "pytest-cov",

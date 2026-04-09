@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from importlib import import_module
 
 from demregpy.dn2dem import dn2dem
 
@@ -86,3 +87,49 @@ def test_dn2dem_rejects_tresp_filter_count_mismatch():
 
     with pytest.raises(ValueError, match="same number of filters"):
         dn2dem(dn, edn, tresp, tresp_logt, temps, warn=False)
+
+
+def test_dn2dem_accepts_gloci_filter_mask(monkeypatch):
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+    captured = {}
+    dn2dem_module = import_module("demregpy.dn2dem")
+
+    def fake_demmap(dd, ed, rmatrix, logt, dlogt, glc, **kwargs):
+        captured["glc"] = np.array(glc, copy=True)
+        na = dd.shape[0]
+        nt = logt.shape[0]
+        nf = dd.shape[1]
+        return (
+            np.zeros((na, nt)),
+            np.zeros((na, nt)),
+            np.zeros((na, nt)),
+            np.zeros(na),
+            np.zeros((na, nf)),
+        )
+
+    monkeypatch.setattr(dn2dem_module, "demmap", fake_demmap)
+
+    dn2dem(dn, edn, tresp, tresp_logt, temps, gloci=np.array([1, 0]), warn=False)
+
+    np.testing.assert_array_equal(captured["glc"], np.array([1, 0]))
+
+
+def test_dn2dem_rejects_bad_gloci_scalar():
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+
+    with pytest.raises(ValueError, match="gloci scalar must be 0 or 1"):
+        dn2dem(dn, edn, tresp, tresp_logt, temps, gloci=2, warn=False)
+
+
+def test_dn2dem_rejects_bad_gloci_shape():
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+
+    with pytest.raises(ValueError, match=r"gloci array must have shape \(2,\)"):
+        dn2dem(dn, edn, tresp, tresp_logt, temps, gloci=np.array([1, 0, 1]), warn=False)
+
+
+def test_dn2dem_rejects_bad_gloci_values():
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+
+    with pytest.raises(ValueError, match="gloci array must contain only 0/1 values"):
+        dn2dem(dn, edn, tresp, tresp_logt, temps, gloci=np.array([1, 2]), warn=False)

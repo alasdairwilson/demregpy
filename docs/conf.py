@@ -111,7 +111,7 @@ autoclass_content = "both"
 # -- Sphinx Gallery ------------------------------------------------------------
 sphinx_gallery_conf = {
     'backreferences_dir': Path('generated') / 'modules',
-    'filename_pattern': '^((?!skip_).)*$',
+    'filename_pattern': r'/plot_.*\.py$',
     'examples_dirs': Path('..') / 'examples',
     'within_subsection_order': "ExampleTitleSortKey",
     'gallery_dirs': Path('generated') / 'gallery',
@@ -121,7 +121,7 @@ sphinx_gallery_conf = {
     'abort_on_example_error': False,
     'plot_gallery': 'True',
     'remove_config_comments': True,
-    'doc_module': ('sunpy'),
+    'doc_module': ('demregpy', 'sunpy'),
     'only_warn_on_example_error': True,
 }
 

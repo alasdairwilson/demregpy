@@ -2,13 +2,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import scipy.io as io
 
 from sunpy.map import Map
 
 from demregpy import dn2dem
 from demregpy.demmap import dem_inv_gsvd, dem_pix, dem_reg_map
-from demregpy.tresp import aia_tresp
+from demregpy.tresp import load_aia_response
 
 
 def _synthetic_dem_pix_inputs():
@@ -234,12 +233,7 @@ def test_aia_synoptic_central_pixel_golden():
     maps = [Map(str(p)) for p in _aia_files()]
     maps = sorted(maps, key=lambda x: x.wavelength)
 
-    trin = io.readsav(aia_tresp)
-    tresp_logt = np.array(trin["logt"])
-    nf = len(trin["tr"][:])
-    trmatrix = np.zeros((len(tresp_logt), nf))
-    for i in range(nf):
-        trmatrix[:, i] = trin["tr"][i]
+    _channels, tresp_logt, trmatrix = load_aia_response()
 
     cx = maps[0].data.shape[0] // 2
     cy = maps[0].data.shape[1] // 2

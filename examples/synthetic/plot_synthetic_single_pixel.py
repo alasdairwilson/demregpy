@@ -1,22 +1,24 @@
 """
-==============
-Using demregpy
-==============
+======================
+Synthetic Single Pixel
+======================
 
-Run a small synthetic DEM inversion.
-
-For more focused examples, see the ``examples/synthetic`` directory.
+Recover a compact synthetic DEM from one set of channel counts.
 """
 
 import matplotlib.pyplot as plt
 
-from demregpy import dn2dem
+from demregpy import dn2dem, plot_dem
 from demregpy._example_utils import make_synthetic_case
 
-# Build a compact synthetic test problem.
+# %%
+# Build a small synthetic test problem.
+
 case = make_synthetic_case()
 
-# Recover a DEM from the synthetic channel counts.
+# %%
+# Run the inversion.
+
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     case["dn_in"],
     case["edn_in"],
@@ -28,27 +30,24 @@ dem, edem, elogt, chisq, dn_reg = dn2dem(
 )
 
 print(f"chi-squared: {chisq:.3f}")
-print("input DN:", case["dn_in"])
-print("reconstructed DN:", dn_reg)
 
-# Compare the recovered DEM to the input DEM model and input counts.
+# %%
+# Compare the recovered DEM to the synthetic truth and check the data fit.
+
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
-axes[0].errorbar(
+plot_dem(
     case["mlogt"],
     dem,
-    xerr=elogt,
-    yerr=edem,
-    fmt="o",
+    elogt=elogt,
+    edem=edem,
+    ax=axes[0],
+    label="Recovered DEM",
     color="tab:red",
     ecolor="mistyrose",
     capsize=0,
-    label="Recovered DEM",
 )
 axes[0].plot(case["tresp_logt"], case["dem_mod"], "--", color="0.3", label="Input DEM")
-axes[0].set_xlabel(r"$\log_{10} T$")
-axes[0].set_ylabel("DEM")
-axes[0].set_yscale("log")
 axes[0].legend()
 
 axes[1].plot(case["dn_in"], "o-", label="Input DN")
@@ -58,4 +57,3 @@ axes[1].set_ylabel("DN")
 axes[1].legend()
 
 fig.tight_layout()
-plt.show()

@@ -1,26 +1,27 @@
 """
-==========================
-Using demregpy on AIA data
-==========================
+================
+AIA Single Pixel
+================
 
-Run a small DEM inversion on one pixel from the local AIA test data.
-
-For more focused examples, see the ``examples/aia`` directory.
+Run ``dn2dem`` on one pixel from the local AIA test fixtures.
 """
 
 import matplotlib.pyplot as plt
 
-from demregpy import dn2dem
+from demregpy import dn2dem, plot_dem
 from demregpy._example_utils import make_aia_pixel_problem
 
-# Load the bundled AIA response file and one pixel from the local FITS fixtures.
+# %%
+# Load the bundled response matrix and the local test FITS files.
+
 case = make_aia_pixel_problem()
-
 print(f"Using pixel ({case['x']}, {case['y']})")
-print("channels:", case["channels"])
-print("input DN:", case["dn_in"])
+print("Channels:", case["channels"])
+print("Input DN:", case["dn_in"])
 
-# Recover a DEM for that pixel.
+# %%
+# Recover a DEM for that single pixel.
+
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     case["dn_in"],
     case["edn_in"],
@@ -32,24 +33,22 @@ dem, edem, elogt, chisq, dn_reg = dn2dem(
 )
 
 print(f"chi-squared: {chisq:.3f}")
-print("reconstructed DN:", dn_reg)
 
-# Plot the recovered DEM and the data fit.
+# %%
+# Plot the recovered DEM and compare the modeled counts to the input counts.
+
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
-axes[0].errorbar(
+plot_dem(
     case["mlogt"],
     dem,
-    xerr=elogt,
-    yerr=edem,
-    fmt="o",
+    elogt=elogt,
+    edem=edem,
+    ax=axes[0],
     color="tab:red",
     ecolor="mistyrose",
     capsize=0,
 )
-axes[0].set_xlabel(r"$\log_{10} T$")
-axes[0].set_ylabel("DEM")
-axes[0].set_yscale("log")
 axes[0].set_title("Recovered DEM")
 
 axes[1].plot(case["dn_in"], "o-", label="Input DN")
@@ -59,4 +58,3 @@ axes[1].set_ylabel("DN / pix / s")
 axes[1].legend()
 
 fig.tight_layout()
-plt.show()

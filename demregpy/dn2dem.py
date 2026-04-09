@@ -10,6 +10,26 @@ __all__ = [
     'dn2dem',
 ]
 
+
+def _normalize_gloci(gloci, nf):
+    """Normalize the public ``gloci`` input to a per-filter 0/1 mask."""
+    gloci_arr = np.asarray(gloci)
+    if gloci_arr.ndim == 0:
+        if gloci_arr == 0:
+            return np.zeros(nf, dtype=int)
+        if gloci_arr == 1:
+            return np.ones(nf, dtype=int)
+        raise ValueError("gloci scalar must be 0 or 1")
+
+    if gloci_arr.shape != (nf,):
+        raise ValueError(f"gloci array must have shape ({nf},)")
+    if not np.all(np.isfinite(gloci_arr)):
+        raise ValueError("gloci array must contain only finite values")
+    if not np.all((gloci_arr == 0) | (gloci_arr == 1)):
+        raise ValueError("gloci array must contain only 0/1 values")
+    return gloci_arr.astype(int)
+
+
 def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, gloci=0,
            rgt_fact=1.5, dem_norm0=None, nmu=40, warn=False, emd_int=False, emd_ret=False, l_emd=False, non_pos=False):
     """
@@ -41,11 +61,14 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         If max iter is reached before a suitable solution is found then the current solution is
         returned instead (which may contain negative values).
         Default is only 10 - although non_pos=True will set as 1.
-    gloci : int, optional
-        If no dem_norm0 given (or dem_norm0 array of 1s) then set gloci 1 or 0 (default 0) to choose weighting for the
+    gloci : int or array_like, optional
+        If no dem_norm0 given (or dem_norm0 array of 1s), choose weighting for the
         inversion process (L constraint matrix).
-        1: uses the min of EM loci curves to weight L.
+        Scalar forms:
+        1: uses the min of EM loci curves from all filters to weight L.
         0: uses two reg runs - first with L=diag(1/dT) and DEM result from this used to weight L for second run.
+        Array form:
+        a length-nf 0/1 mask selecting which filters should contribute to the EM loci weighting.
         Default is 0.
     rgt_fact : float, optional
         The factor by which rgt_tweak increases each iteration.
@@ -55,7 +78,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         This is an array of length nt which contains an initial guess of the DEM solution providing a weighting
         for the inversion process (L constraint matrix). The actual values of the normalisation
         do not matter, only their relative values.
-        If no dem_norm0 given then L weighting based on value of gloci (0 is default).
+        If no dem_norm0 given then L weighting is based on value of gloci (0 is default).
         Default is None.
     nmu : int, optional
         Number of reg param samples to calculate (default (or <=40) 500 for 0D, 42 for map).
@@ -175,16 +198,9 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     if (warn and (rgt_fact <= 1)):
         print('Warning, rgt_fact should be > 1, for postivity loop to iterate properly.')
 
-    # Set glc to either none or all, based on gloci input (default none/not using)
-    # IDL version of code allows selective use of gloci, i.e [1,1,0,0,1,1] to chose 4 of 6 filters for EM loci
-    # dem_pix() in demmap_pos.py does allow this, but not sure will work through these wrapper functions
-    # also not sure if this functionality is actually needed, just stick with all filter or none?
-    if gloci == 1:
-        glc = np.ones(nf)
-        glc.astype(int)
-    else:
-        glc = np.zeros(nf)
-        glc.astype(int)
+    # gloci can be 0/1 for all filters, or a per-filter 0/1 mask selecting
+    # which filters contribute to the EM loci weighting.
+    glc = _normalize_gloci(gloci, nf)
 
     if len(tresp[0, :]) != nf:
         raise ValueError("tresp must have the same number of filters as the data")
