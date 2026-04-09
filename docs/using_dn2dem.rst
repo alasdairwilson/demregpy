@@ -62,6 +62,8 @@ Recover the DEM
 
 The primary way to recover a DEM is via :func:`demregpy.dn2dem`, which uses regularized inversion to solve for the unknown DEM.
 
+.. code-block:: python
+
    dem, edem, elogt, chisq, dn_reg = dn2dem(
        synthetic.dn_in,
        synthetic.edn_in,
@@ -121,8 +123,8 @@ Try Different Weighting Choices
 ===============================
 
 The default solve uses the self-normalized weighting built inside ``dn2dem``.
-Put it simply, this means the regularization is scaled by the magnitude of the DEM but there are additional weighting options available to build the weighting from the data or from a prior DEM. The default is often a good choice, it can be worth trying alternatives, especially if you have a good prior DEM guess, but the best choice depends on the problem and data quality.
-Two common alternatives are using ``loci curves`` with ``gloci`` and providing a manual weighting curve via ``dem_norm0``.
+Two common alternatives are using the EM loci curves with ``gloci`` and
+providing a manual weighting curve with ``dem_norm0``.
 
 ``gloci``
 ---------
@@ -143,7 +145,8 @@ from all filters.
    )
 
 You can also pass a length-``nf`` 0/1 mask to use only selected filters.
-This might be particularly useful if you are combining observations from different instruments, or if you have a good reason to exclude a filter with a poor signal-to-noise ratio.
+This can be useful if you want the loci weighting to come from only part of
+the input data.
 
 .. code-block:: python
 
@@ -183,8 +186,8 @@ Try EMD Space
 =============
 
 You can also run the internal solve in emission measure distribution space.
-Some users report that doing the solve in EMD space can give better results, but it is not guaranteed to be better in all cases.
-As with all things DEM, the best choice depends on the problem, the instrument and the type of observation.
+This changes the internal weighting and can be useful to compare with the
+default DEM-space solve.
 
 .. code-block:: python
 
@@ -216,16 +219,17 @@ If you want the returned result in EMD units as well, add ``emd_ret=True``.
 Using ``dn2dem`` with Other Input Shapes
 ========================================
 
-The last axis of ``dn_in`` and ``edn_in`` is the filter or channel, each DEM is independently solved given the datanumbers for that pixel.
-However, you can independently solve as many pixels as you like by providing multi-dimensional input array of up to 3 non-filter dimensions.
-That means the same interface works for one spectrum, a line, a time series, a map, or even a time series of maps.
+Carrying out many DEMs at once is not only easy but is also significantly faster.
+The last axis of the input arrays, ``dn_in`` and ``edn_in``, is always the filter or channel, corresponding to the columns of the response matrix.
+The remaining leading axes are treated as independent spectra, and the same solve is carried out for each spectrum in turn.
+You can provide up to 3 leading axes, so the input can be up to 4D, with the filter axis last.
 
-Common shapes are:  
+Common shapes are:
 
-- ``(nf,)`` for one spectrum
+- ``(nf,)`` for a single spectrum
 - ``(n, nf)`` for a spatial line or time series
 - ``(nx, ny, nf)`` for a map
-- ``(nt, nx, ny, nf)`` for a time series of maps
+- ``(ntime, nx, ny, nf)`` for a stack of maps
 
 For example, if you have ten spectra stacked in time:
 
@@ -243,8 +247,8 @@ For example, if you have ten spectra stacked in time:
        warn=False,
    )
 
-The output has the same leading shape, with the filter axis replaced by
-temperature bin. In this case:
+The output has the same leading shape, with the filter axis replaced by temperature bin.
+In this case:
 
 - ``dn_series`` has shape ``(10, nf)``
 - ``dem_series`` has shape ``(10, nt)``

@@ -90,6 +90,24 @@ def test_dn2dem_rejects_tresp_filter_count_mismatch():
         dn2dem(dn, edn, tresp, tresp_logt, temps, warn=False)
 
 
+def test_dn2dem_rejects_mismatched_count_shapes():
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+
+    with pytest.raises(ValueError, match="same shape"):
+        dn2dem(dn, edn[np.newaxis, :], tresp, tresp_logt, temps, warn=False)
+
+
+def test_dn2dem_rejects_more_than_three_leading_dimensions():
+    dn = np.ones((1, 2, 3, 4, 2))
+    edn = np.ones_like(dn) * 0.1
+    tresp = np.ones((7, 2))
+    tresp_logt = np.linspace(5.0, 5.6, tresp.shape[0])
+    temps = 10 ** np.linspace(5.0, 5.6, tresp.shape[0] + 1)
+
+    with pytest.raises(ValueError, match=r"dn_in must have shape"):
+        dn2dem(dn, edn, tresp, tresp_logt, temps, warn=False)
+
+
 def test_dn2dem_accepts_gloci_filter_mask(monkeypatch):
     dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
     captured = {}
@@ -115,6 +133,52 @@ def test_dn2dem_accepts_gloci_filter_mask(monkeypatch):
     np.testing.assert_array_equal(captured["glc"], np.array([1, 0]))
 
 
+def test_dn2dem_accepts_4d_input_and_preserves_shape(monkeypatch):
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+    dn2dem_module = import_module("demregpy.dn2dem")
+    captured = {}
+    dn_4d = np.broadcast_to(dn, (1, 2, 3, dn.shape[0]))
+    edn_4d = np.broadcast_to(edn, dn_4d.shape)
+    nt = len(temps) - 1
+    dem_norm0 = np.ones((1, 2, 3, nt))
+
+    def fake_demmap(dd, ed, rmatrix, logt, dlogt, glc, **kwargs):
+        captured["dd_shape"] = dd.shape
+        captured["ed_shape"] = ed.shape
+        captured["dem_norm0_shape"] = kwargs["dem_norm0"].shape
+        nobs = dd.shape[0]
+        nf = dd.shape[1]
+        nt_local = logt.shape[0]
+        return (
+            np.arange(nobs * nt_local, dtype=float).reshape(nobs, nt_local),
+            np.ones((nobs, nt_local)),
+            np.full((nobs, nt_local), 2.0),
+            np.arange(nobs, dtype=float),
+            np.arange(nobs * nf, dtype=float).reshape(nobs, nf),
+        )
+
+    monkeypatch.setattr(dn2dem_module, "demmap", fake_demmap)
+
+    dem, edem, elogt, chisq, dn_reg = dn2dem(
+        dn_4d,
+        edn_4d,
+        tresp,
+        tresp_logt,
+        temps,
+        dem_norm0=dem_norm0,
+        warn=False,
+    )
+
+    assert captured["dd_shape"] == (6, 2)
+    assert captured["ed_shape"] == (6, 2)
+    assert captured["dem_norm0_shape"] == (6, nt)
+    assert dem.shape == (1, 2, 3, nt)
+    assert edem.shape == (1, 2, 3, nt)
+    assert elogt.shape == (1, 2, 3, nt)
+    assert chisq.shape == (1, 2, 3)
+    assert dn_reg.shape == (1, 2, 3, 2)
+
+
 def test_dn2dem_rejects_bad_gloci_scalar():
     dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
 
@@ -134,3 +198,10 @@ def test_dn2dem_rejects_bad_gloci_values():
 
     with pytest.raises(ValueError, match="gloci array must contain only 0/1 values"):
         dn2dem(dn, edn, tresp, tresp_logt, temps, gloci=np.array([1, 2]), warn=False)
+
+
+def test_dn2dem_rejects_bad_dem_norm0_shape():
+    dn, edn, tresp, tresp_logt, temps = _basic_dn2dem_inputs()
+
+    with pytest.raises(ValueError, match=r"dem_norm0 must have shape"):
+        dn2dem(dn, edn, tresp, tresp_logt, temps, dem_norm0=np.ones((2, 7)), warn=False)

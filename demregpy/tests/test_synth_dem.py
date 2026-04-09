@@ -190,6 +190,32 @@ def test_synth_2d_shapes():
         assert dn_reg.shape == (nx, ny, nf)
 
 
+def test_synth_3_leading_dim_shapes():
+    dn_in, _edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
+    ntime, nx, ny = 2, 2, 3
+    nf = dn_in.shape[0]
+    dn = np.zeros((ntime, nx, ny, nf))
+    edn = np.zeros((ntime, nx, ny, nf))
+
+    for t in range(ntime):
+        for x in range(nx):
+            for y in range(ny):
+                scale = 1.0 + 0.1 * t + 0.05 * x + 0.02 * y
+                dn[t, x, y, :] = dn_in * scale
+                edn[t, x, y, :] = 0.1 * dn[t, x, y, :]
+
+    dem, edem, elogt, chisq, dn_reg = dn2dem(
+        dn, edn, trmatrix, tresp_logt, temps, nmu=50, warn=False
+    )
+
+    nt = len(temps) - 1
+    assert dem.shape == (ntime, nx, ny, nt)
+    assert edem.shape == (ntime, nx, ny, nt)
+    assert elogt.shape == (ntime, nx, ny, nt)
+    assert chisq.shape == (ntime, nx, ny)
+    assert dn_reg.shape == (ntime, nx, ny, nf)
+
+
 def test_synth_golden_outputs():
     dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
     dem, _edem, _elogt, chisq, dn_reg = dn2dem(

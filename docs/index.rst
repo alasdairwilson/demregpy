@@ -2,9 +2,11 @@
 demregpy Documentation
 **********************
 
-``demregpy`` is a python package for recovering differential emission measures (DEMs), and their associated errors, from multi-channel data solar data using regularized inversion.
-It can recover a DEM from any data source where we have data arrays and instrument temperature response matrices, so the same interface can be used for any solar instrument, e.g. AIA, XRT, EIS, RHESSI, etc., in any data shape, single-pixel, 1D, 2D, or timeseries.
-The documentation includes a quick start guide, an example gallery, and a complete API reference.
+``demregpy`` is a python package for recovering differential emission measures
+(DEMs), and their associated errors, from multi-channel solar data using
+regularized inversion. It can be used with any instrument that provides data
+numbers and temperature response matrices. ``dn2dem`` supports single spectra,
+lines, maps, and stacks of maps, with the filter or channel axis last.
 
 .. toctree::
    :hidden:
@@ -14,6 +16,7 @@ The documentation includes a quick start guide, an example gallery, and a comple
    installation
    using_dn2dem
    weighting
+   todo
    generated/gallery/index
    whatsnew/index
 

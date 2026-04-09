@@ -34,14 +34,15 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     Recover a differential emission measure from channel counts.
 
     This is the main public wrapper around the lower-level regularised
-    inversion routines. It accepts single-pixel, time-series, or small map-like
-    arrays whose last axis is filter/channel.
+    inversion routines. It accepts arrays whose last axis is
+    filter/channel, with up to three leading spatial or temporal axes.
 
     Parameters
     ----------
     dn_in : array_like
         Input channel counts. The last axis must be filter/channel, so valid
-        shapes include ``(nf,)``, ``(n, nf)``, and ``(nx, ny, nf)``.
+        shapes include ``(nf,)``, ``(n, nf)``, ``(nx, ny, nf)``, and
+        ``(n0, n1, n2, nf)``.
     edn_in : array_like
         Uncertainties on ``dn_in`` with the same shape and units.
     tresp : array_like
@@ -109,6 +110,18 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         Counts reconstructed from the recovered solution, with the same shape as
         ``dn_in``.
     """
+    dn_in = np.asarray(dn_in)
+    edn_in = np.asarray(edn_in)
+
+    if dn_in.ndim == 0:
+        raise ValueError("dn_in must have at least one dimension")
+    if dn_in.ndim > 4:
+        raise ValueError(
+            "dn_in must have shape (nf,), (n, nf), (nx, ny, nf), or (n0, n1, n2, nf)"
+        )
+    if edn_in.shape != dn_in.shape:
+        raise ValueError("edn_in must have the same shape as dn_in")
+
     if len(temps) < 4:
         raise ValueError("temps must define at least 3 DEM bins")
 
@@ -128,59 +141,29 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     dlogt = (np.log10(temps[1:])-np.log10(temps[:-1]))
     nt = len(dlogt)
     logt = (np.array([np.log10(temps[0])+(dlogt[i]*(float(i)+0.5)) for i in np.arange(nt)]))
-    # number of DEM entries
 
-    # hopefully we can deal with a variety of data, nx,ny,nf
-    sze = dn_in.shape
+    leading_shape = dn_in.shape[:-1]
+    nf = dn_in.shape[-1]
+    nobs = int(np.prod(leading_shape)) if leading_shape else 1
 
-    # for a single pixel
     dem0 = None
-    # for a single pixel
-    if len(sze) == 1:
-        nx = 1
-        ny = 1
-        nf = sze[0]
-        dn = np.zeros([1, 1, nf])
-        dn[0, 0, :] = dn_in
-        edn = np.zeros([1, 1, nf])
-        edn[0, 0, :] = edn_in
-        if dem_norm0 is not None:
-            dem0 = np.zeros([1, 1, nt])
-            dem0[0, 0, :] = dem_norm0
+    if dem_norm0 is not None:
+        expected_dem_shape = (*leading_shape, nt)
+        if dem_norm0.shape == (nt,):
+            dem0 = np.broadcast_to(dem_norm0, expected_dem_shape)
+        elif dem_norm0.shape == expected_dem_shape:
+            dem0 = dem_norm0
+        else:
+            raise ValueError(f"dem_norm0 must have shape {expected_dem_shape} or {(nt,)}")
+        dem0 = np.reshape(dem0, (nobs, nt))
+
+    if dn_in.ndim == 1:
         if warn is False:
             warn = True
         if nmu <= 40:
             nmu = 500
-
-    # for a row of pixels
-    if len(sze) == 2:
-        nx = sze[0]
-        ny = 1
-        nf = sze[1]
-        dn = np.zeros([nx, 1, nf])
-        dn[:, 0, :] = dn_in
-        edn = np.zeros([nx, 1, nf])
-        edn[:, 0, :] = edn_in
-        if dem_norm0 is not None:
-            dem0 = np.zeros([nx, 1, nt])
-            dem0[:, 0, :] = dem_norm0
-        if nmu <= 40:
-            nmu = 42
-
-    # for 2d image
-    if len(sze) == 3:
-        nx = sze[0]
-        ny = sze[1]
-        nf = sze[2]
-        dn = np.zeros([nx, ny, nf])
-        dn[:, :, :] = dn_in
-        edn = np.zeros([nx, ny, nf])
-        edn[:, :, :] = edn_in
-        if dem_norm0 is not None:
-            dem0 = np.zeros([nx, ny, nt])
-            dem0[:, :, :] = dem_norm0
-        if nmu <= 40:
-            nmu = 42
+    elif nmu <= 40:
+        nmu = 42
     # If want to ignore positivity constraint then set max_iter=1 and no need for the warnings
     if non_pos:
         max_iter = 1
@@ -230,37 +213,34 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     sclf = 1E15
     rmatrix = rmatrix*sclf
 
-    dn1d = np.reshape(dn, [nx*ny, nf])
-    edn1d = np.reshape(edn, [nx*ny, nf])
+    dn1d = np.reshape(dn_in, (nobs, nf))
+    edn1d = np.reshape(edn_in, (nobs, nf))
     # create our 1d arrays for output
-    dem1d = np.zeros([nx*ny, nt])
-    chisq1d = np.zeros([nx*ny])
-    edem1d = np.zeros([nx*ny, nt])
-    elogt1d = np.zeros([nx*ny, nt])
-    dn_reg1d = np.zeros([nx*ny, nf])
+    dem1d = np.zeros([nobs, nt])
+    chisq1d = np.zeros([nobs])
+    edem1d = np.zeros([nobs, nt])
+    elogt1d = np.zeros([nobs, nt])
+    dn_reg1d = np.zeros([nobs, nf])
 
     # *****************************************************
     #  Actually doing the DEM calculations
     # *****************************************************
-    # Should always be just running the first part of if here as setting dem01d to array of 1s if nothing given
-    # So now more a check dimensions of things are correct
-    if dem0 is not None and (dem0.ndim == dn.ndim):
-        dem01d = np.reshape(dem0, [nx*ny, nt])
+    if dem0 is not None:
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt, dlogt, glc,
                    reg_tweak=reg_tweak, max_iter=max_iter,
-                   rgt_fact=rgt_fact, dem_norm0=dem01d, nmu=nmu, warn=warn, l_emd=l_emd)
+                   rgt_fact=rgt_fact, dem_norm0=dem0, nmu=nmu, warn=warn, l_emd=l_emd)
     else:
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt,
                    dlogt, glc, reg_tweak=reg_tweak, max_iter=max_iter,
                    rgt_fact=rgt_fact, dem_norm0=None, nmu=nmu, warn=warn, l_emd=l_emd)
-    # reshape the 1d arrays to original dimensions and squeeze extra dimensions
-    dem = ((np.reshape(dem1d, [nx, ny, nt]))*sclf).squeeze()
-    edem = ((np.reshape(edem1d, [nx, ny, nt]))*sclf).squeeze()
-    elogt = (np.reshape(elogt1d, [nx, ny, nt])/(2.0*np.sqrt(2.*np.log(2.)))).squeeze()
-    chisq = (np.reshape(chisq1d, [nx, ny])).squeeze()
-    dn_reg = (np.reshape(dn_reg1d, [nx, ny, nf])).squeeze()
+
+    dem = np.reshape(dem1d, (*leading_shape, nt))*sclf
+    edem = np.reshape(edem1d, (*leading_shape, nt))*sclf
+    elogt = np.reshape(elogt1d, (*leading_shape, nt)) / (2.0*np.sqrt(2.*np.log(2.)))
+    chisq = chisq1d[0] if not leading_shape else np.reshape(chisq1d, leading_shape)
+    dn_reg = np.reshape(dn_reg1d, (*leading_shape, nf))
 
     # There's probably a neater way of doing this (and maybe provide info of what was done as well?)
     # but fine for now as it works
