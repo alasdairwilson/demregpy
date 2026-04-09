@@ -41,8 +41,9 @@ def load_aia_flare_timeseries():
     data_dir = _DATA_DIR / "aia_flare"
     map_rows = []
     for slot_tag in AIA_FLARE_SLOT_TAGS:
-        row = []
-        for wave in AIA_WAVELENGTHS:
-            row.append(Map(sorted(data_dir.glob(f"aia_flare_{slot_tag}-*_{wave:03d}.fits"))[0]))
+        row = [
+            Map(sorted(data_dir.glob(f"aia_flare_{slot_tag}-*_{wave:03d}.fits"))[0])
+            for wave in AIA_WAVELENGTHS
+        ]
         map_rows.append(row)
     return map_rows

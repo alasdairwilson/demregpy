@@ -17,18 +17,8 @@ class SyntheticObservation:
     """
     Synthetic observation returned by :func:`synthesize_counts`.
 
-    Attributes
-    ----------
-    dem : ndarray
-        Input DEM on the temperature grid passed to :func:`synthesize_counts`.
-    dn_clean : ndarray
-        Noise-free channel counts obtained by folding ``dem`` through the
-        response matrix.
-    dn_in : ndarray
-        Channel counts to use as inversion input. This is either identical to
-        ``dn_clean`` or a noisy version if ``noise_fraction`` was supplied.
-    edn_in : ndarray
-        Uncertainties paired with ``dn_in``.
+    The fields store the input DEM, the corresponding noise-free counts, the
+    counts used as inversion input, and their uncertainties.
     """
 
     dem: np.ndarray
