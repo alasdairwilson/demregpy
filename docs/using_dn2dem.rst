@@ -116,21 +116,18 @@ To check the quality of the recovered DEM, you can:
 
    fig.tight_layout()
 
-If ``dn_reg`` and the input counts differ strongly, look at ``chisq`` and then
-check the solver settings, the temperature grid, and the response matrix.
+If ``dn_reg`` and the input counts differ strongly, look at ``chisq`` and then check the solver settings, the temperature grid, and the response matrix.
 
 Try Different Weighting Choices
 ===============================
 
 The default solve uses the self-normalized weighting built inside ``dn2dem``.
-Two common alternatives are using the EM loci curves with ``gloci`` and
-providing a manual weighting curve with ``dem_norm0``.
+Two common alternatives are using the EM loci curves with ``gloci`` and providing a manual weighting curve with ``dem_norm0``.
 
 ``gloci``
 ---------
 
-Set ``gloci=1`` to build the weighting from the minimum of the EM loci curves
-from all filters.
+Set ``gloci=1`` to build the weighting from the minimum of the EM loci curves from all filters.
 
 .. code-block:: python
 
@@ -145,8 +142,7 @@ from all filters.
    )
 
 You can also pass a length-``nf`` 0/1 mask to use only selected filters.
-This can be useful if you want the loci weighting to come from only part of
-the input data.
+This can be useful if you want the loci weighting to come from only part of the input data.
 
 .. code-block:: python
 
@@ -163,8 +159,7 @@ the input data.
 ``dem_norm0``
 -------------
 
-If you already have a DEM-shaped weighting curve, pass it through
-``dem_norm0``.
+If you already have a DEM-shaped weighting curve, pass it through ``dem_norm0``.
 
 .. code-block:: python
 
@@ -186,8 +181,7 @@ Try EMD Space
 =============
 
 You can also run the internal solve in emission measure distribution space.
-This changes the internal weighting and can be useful to compare with the
-default DEM-space solve.
+This changes the internal weighting and can be useful to compare with the default DEM-space solve.
 
 .. code-block:: python
 
@@ -257,6 +251,7 @@ In this case:
 Where To Go Next
 ================
 
+- :doc:`method` for an explanation of how the inversion works.
 - :doc:`weighting` for more detail on the weighting-related options
 - :doc:`generated/gallery/index` for more runnable examples
 - :doc:`api` for the full function signatures and lower-level routines

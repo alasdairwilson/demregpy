@@ -2,35 +2,31 @@
 Weighting Schemes
 *****************
 
-``dn2dem`` supports three main weighting schemes, along with a few related options
-that change how the inversion is carried out.
+``dn2dem`` supports three main weighting schemes, along with a few related options that change how the inversion is carried out.
 
-See :doc:`api` for the full function signatures and the example gallery for
-runnable scripts.
+See :doc:`api` for the full function signatures and the :doc:`generated/gallery/index` for example scripts.
+See :doc:`method` for a broader description of the inversion itself.
 
 Overview
 ========
 
-The main weighting-related arguments in ``demregpy.dn2dem`` are:
+The main weighting-related arguments in :func:`demregpy.dn2dem` are:
 
-- ``gloci``: choose between the default self-normalized weighting and EM loci weighting,
-  either for all filters or for a selected subset.
+- ``gloci``: choose between the default self-normalized weighting and EM loci weighting, either for all filters or for a selected subset.
 - ``dem_norm0``: supply your own weighting curve directly.
 - ``emd_int`` and ``l_emd``: related options that change how the constraint is applied.
 
-Default Self-Normalized Weighting
-=================================
+Default: Self-Normalized Weighting
+==================================
 
-If you do not pass ``dem_norm0``, and if ``gloci`` does not select any filters,
-:func:`demregpy.dn2dem` uses the default self-normalized weighting.
+If you do not pass ``dem_norm0``, and if ``gloci`` does not select any filters, :func:`demregpy.dn2dem` uses the default self-normalized weighting.
 
 In this case:
 
 1. A first regularized solve is used to estimate a DEM-like shape.
 2. That estimated shape is turned into the weighting used in the main solve.
 
-The weighting is estimated from the inversion itself rather than supplied by
-the caller.
+The weighting is estimated from the inversion itself rather than supplied by the caller.
 
 Use it like this:
 
@@ -47,8 +43,18 @@ Use it like this:
 EM Loci Weighting
 =================
 
-If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves
-from all filters to build the weighting.
+A Loci curve for a given filter is useful as an upper bound on the emission measure.
+The curve is EM(T) for each T that would produce the observed data number in that filter if that were the only plasma that was observed.
+Such that,
+
+EM(T) = DN / R(T)
+
+where R(T) is the temperature response of the filter.
+
+This means that the EM loci curve of a filter is the absolute maximum possible EM at each temperature that is consistent with the observed data number in that filter. 
+If the EM were above the loci curve then the instrument would have observed a larger data number than it did.
+
+If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves from all filters to build the weighting.
 
 You can also pass a length-``nf`` 0/1 mask to use only selected filters.
 
@@ -78,14 +84,13 @@ or
        gloci=[1, 1, 0, 0, 1, 1],
    )
 
-Here the weighting comes from the EM loci curves rather than the self-normalized
-first pass.
+Here the weighting has come from the EM loci curves rather than the self-normalized first pass.
 
 User-Supplied Weighting
 =======================
 
-If you already have a DEM-shaped weighting curve, you can pass it through
-``dem_norm0``. Only the relative shape matters, not the absolute scale.
+If you already have a DEM-shaped weighting curve, you can pass it through ``dem_norm0``.
+Only the relative shape matters, not the absolute scale.
 
 Use it like this:
 
@@ -103,47 +108,33 @@ Use it like this:
    )
 
 Here the weighting comes directly from the supplied shape.
+Good choices might be a log-normal curve, or a DEM from a previous solve, or a DEM from a different instrument.
+
+You can provide the same weighting curve for every pixel by passing in `dem_norm0` of shape `(nt,)`, or you can provide a different weighting curve for each pixel by passing an array with the same shape as the output DEM (e.g. `(nx,ny,nT)` for a 2-dimensional map).
+
 
 Related Options
 ===============
 
-These are not separate weighting schemes, but they change how the weighted
-problem is solved.
+These are not separate weighting schemes, but they change how the weighted problem is solved.
 
 ``emd_int=True``
 ----------------
 
 This performs the internal regularization in EMD space rather than DEM space.
+It also enables ``l_emd=True`` internally.
 
 ``l_emd=True``
 --------------
 
-This changes the form of the constraint matrix.
+This changes the diagonal constraint from ``sqrt(dlogt) / sqrt(weight)`` to ``1 / weight``.
+That removes the ``sqrt(dlogt)`` factor and applies a stronger penalty to bins with low weighting.
+This form is used automatically when ``emd_int=True``.
 
 ``non_pos=True``
 ----------------
 
-This disables the positivity-enforcing iteration by forcing a single pass.
-
-Comparing Modes
-===============
-
-The three main weighting paths differ in where the weighting comes from:
-
-- default mode: inferred from an initial self-normalized solve,
-- ``gloci=1`` or a 0/1 mask: inferred from EM loci curves,
-- ``dem_norm0``: supplied directly by the caller.
-
-In all three cases, the same output API is returned:
-
-- ``dem``
-- ``edem``
-- ``elogt``
-- ``chisq``
-- ``dn_reg``
-
-Comparing those outputs across modes shows how strongly a result depends on the
-weighting choice.
+This disables the positivity-enforcing iterations, meaning there will always only be a single pass.
 
 See Also
 ========
