@@ -9,7 +9,9 @@ Recover a compact synthetic DEM from one set of channel counts.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demregpy import dn2dem, plot_dem, synthesize_counts
+from demregpy import dn2dem
+from demregpy.plotting import plot_dem
+from demregpy.synthetic import synthesize_counts
 
 # %%
 # Build a small synthetic response matrix and one Gaussian DEM model.

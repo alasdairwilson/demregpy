@@ -9,13 +9,14 @@ Run ``dn2dem`` on one pixel from the local AIA test fixtures.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demregpy import dn2dem, load_aia_response, plot_dem
-from demregpy._example_utils import load_aia_test_maps
+from demregpy import dn2dem, load_aia_response
+from demregpy.plotting import plot_dem
+from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # %%
 # Load the bundled response matrix and the local test FITS files.
 
-maps = load_aia_test_maps()
+maps = load_aia_full_disk_maps()
 channels, tresp_logt, trmatrix = load_aia_response()
 
 x = maps[0].data.shape[0] // 2

@@ -9,7 +9,8 @@ Run ``dn2dem`` on a small time series to produce a DEMogram.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demregpy import dn2dem, synthesize_counts
+from demregpy import dn2dem
+from demregpy.synthetic import synthesize_counts
 
 # %%
 # Build a short sequence of synthetic spectra.

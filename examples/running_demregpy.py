@@ -11,7 +11,9 @@ For more focused examples, see the ``examples/synthetic`` directory.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demregpy import dn2dem, synthesize_counts
+from demregpy import dn2dem
+from demregpy.plotting import plot_dem
+from demregpy.synthetic import synthesize_counts
 
 # Build a compact synthetic response matrix and one DEM profile.
 tresp_logt = np.linspace(5.7, 6.3, 7)
@@ -44,21 +46,18 @@ print("reconstructed DN:", dn_reg)
 # Compare the recovered DEM to the input DEM model and input counts.
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
-axes[0].errorbar(
+plot_dem(
     mlogt,
     dem,
-    xerr=elogt,
-    yerr=edem,
-    fmt="o",
+    elogt=elogt,
+    edem=edem,
+    ax=axes[0],
+    label="Recovered DEM",
     color="tab:red",
     ecolor="mistyrose",
     capsize=0,
-    label="Recovered DEM",
 )
 axes[0].plot(tresp_logt, dem_model, "--", color="0.3", label="Input DEM")
-axes[0].set_xlabel(r"$\log_{10} T$")
-axes[0].set_ylabel("DEM")
-axes[0].set_yscale("log")
 axes[0].legend()
 
 axes[1].plot(synthetic.dn_in, "o-", label="Input DN")

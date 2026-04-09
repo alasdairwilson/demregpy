@@ -10,12 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from demregpy import dn2dem, load_aia_response
-from demregpy._example_utils import load_aia_flare_maps
+from demregpy.tests.example_data import load_aia_flare_timeseries
 
 # %%
 # Load the local flare cutouts and sum each channel over the whole cutout area.
 
-map_rows = load_aia_flare_maps()
+map_rows = load_aia_flare_timeseries()
 channels, tresp_logt, trmatrix = load_aia_response()
 
 n_times = len(map_rows)

@@ -12,10 +12,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from demregpy import dn2dem, load_aia_response
-from demregpy._example_utils import load_aia_test_maps
+from demregpy.plotting import plot_dem
+from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # Load the bundled AIA response file and one pixel from the local FITS fixtures.
-maps = load_aia_test_maps()
+maps = load_aia_full_disk_maps()
 channels, tresp_logt, trmatrix = load_aia_response()
 
 x = maps[0].data.shape[0] // 2
@@ -46,19 +47,16 @@ print("reconstructed DN:", dn_reg)
 # Plot the recovered DEM and the data fit.
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
-axes[0].errorbar(
+plot_dem(
     mlogt,
     dem,
-    xerr=elogt,
-    yerr=edem,
-    fmt="o",
+    elogt=elogt,
+    edem=edem,
+    ax=axes[0],
     color="tab:red",
     ecolor="mistyrose",
     capsize=0,
 )
-axes[0].set_xlabel(r"$\log_{10} T$")
-axes[0].set_ylabel("DEM")
-axes[0].set_yscale("log")
 axes[0].set_title("Recovered DEM")
 
 axes[1].plot(dn_in, "o-", label="Input DN")

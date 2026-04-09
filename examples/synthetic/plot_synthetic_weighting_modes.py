@@ -9,7 +9,8 @@ Compare the default self-normalized constraint, ``gloci``, and a user-supplied w
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demregpy import dn2dem, synthesize_counts
+from demregpy import dn2dem
+from demregpy.synthetic import synthesize_counts
 
 # %%
 # Build one synthetic problem and solve it three ways.

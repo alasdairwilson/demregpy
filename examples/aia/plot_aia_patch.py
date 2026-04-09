@@ -10,12 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from demregpy import dn2dem, load_aia_response
-from demregpy._example_utils import load_aia_test_maps
+from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # %%
 # Load a small patch around the center of the local test maps.
 
-maps = load_aia_test_maps()
+maps = load_aia_full_disk_maps()
 _channels, tresp_logt, trmatrix = load_aia_response()
 
 width = 10

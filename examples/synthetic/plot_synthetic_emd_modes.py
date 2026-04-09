@@ -9,7 +9,8 @@ Compare the standard DEM inversion with the EMD-oriented options.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demregpy import dn2dem, synthesize_counts
+from demregpy import dn2dem
+from demregpy.synthetic import synthesize_counts
 
 # %%
 # Use a slightly broader synthetic DEM so the mode differences are easier to see.
