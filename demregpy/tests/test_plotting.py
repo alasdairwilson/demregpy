@@ -1,13 +1,13 @@
+import matplotlib
 import numpy as np
+import pytest
 
 from demregpy.plotting import plot_dem
 
+matplotlib.use("Agg")
+
 
 def test_plot_dem_sets_labels_and_scale():
-    import matplotlib
-
-    matplotlib.use("Agg")
-
     logt = np.array([5.8, 5.9, 6.0])
     dem = np.array([1e20, 2e20, 1.5e20])
     elogt = np.array([0.05, 0.05, 0.05])
@@ -31,9 +31,5 @@ def test_plot_dem_rejects_non_1d_input():
     logt = np.array([[5.8, 5.9]])
     dem = np.array([1e20, 2e20])
 
-    try:
+    with pytest.raises(ValueError, match="one-dimensional"):
         plot_dem(logt, dem)
-    except ValueError as exc:
-        assert "one-dimensional" in str(exc)
-    else:
-        raise AssertionError("plot_dem should reject non-1d input")

@@ -1,6 +1,7 @@
+from importlib import import_module
+
 import numpy as np
 import pytest
-from importlib import import_module
 
 from demregpy.dn2dem import dn2dem
 

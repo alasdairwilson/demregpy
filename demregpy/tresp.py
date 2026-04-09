@@ -1,6 +1,7 @@
 """
 Temperature response data.
 """
+import importlib
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +18,7 @@ def load_aia_response(response_file=aia_tresp):
     Parameters
     ----------
     response_file : path-like, optional
-        Path to an IDL ``.sav`` response file. Defaults to the bundled evenorm
+        Path to an IDL ``.save`` response file. Defaults to the bundled evenorm
         response.
 
     Returns
@@ -30,7 +31,7 @@ def load_aia_response(response_file=aia_tresp):
         Temperature response matrix with shape ``(nt, nf)``.
     """
     try:
-        import scipy.io as io
+        io = importlib.import_module("scipy.io")
     except ImportError as exc:
         raise ImportError(
             "load_aia_response requires scipy. Install demregpy with the "

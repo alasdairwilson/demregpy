@@ -10,16 +10,16 @@ from .synthetic import SyntheticObservation, synthesize_counts
 from .version import version as __version__
 
 __all__ = [
+    "SyntheticObservation",
     "__version__",
     "aia_tresp",
-    "load_aia_response",
-    "plot_dem",
-    "SyntheticObservation",
-    "synthesize_counts",
     "dem_inv_gsvd",
     "dem_pix",
     "dem_reg_map",
     "dem_unwrap",
     "demmap",
     "dn2dem",
+    "load_aia_response",
+    "plot_dem",
+    "synthesize_counts",
 ]

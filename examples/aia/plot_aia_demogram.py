@@ -21,7 +21,7 @@ channels, tresp_logt, trmatrix = load_aia_response()
 n_times = len(map_rows)
 n_channels = len(channels)
 dn_in = np.zeros((n_times, n_channels), dtype=float)
-cutout_94 = np.zeros((n_times,) + map_rows[0][0].data.shape, dtype=float)
+cutout_94 = np.zeros((n_times, *map_rows[0][0].data.shape), dtype=float)
 time_tags = []
 
 for i, row in enumerate(map_rows):

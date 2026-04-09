@@ -5,7 +5,6 @@
 # http://www.sphinx-doc.org/en/master/config
 
 import datetime
-from pathlib import Path
 
 from packaging.version import Version
 from sunpy_sphinx_theme import PNG_ICON
@@ -110,16 +109,16 @@ autoclass_content = "both"
 
 # -- Sphinx Gallery ------------------------------------------------------------
 sphinx_gallery_conf = {
-    'backreferences_dir': Path('generated') / 'modules',
+    'backreferences_dir': 'generated/modules',
     'filename_pattern': r'/plot_.*\.py$',
-    'examples_dirs': Path('..') / 'examples',
+    'examples_dirs': '../examples',
     'within_subsection_order': "ExampleTitleSortKey",
-    'gallery_dirs': Path('generated') / 'gallery',
+    'gallery_dirs': 'generated/gallery',
     'matplotlib_animations': True,
     # Comes from the theme.
-    "default_thumb_file": PNG_ICON,
+    "default_thumb_file": str(PNG_ICON),
     'abort_on_example_error': False,
-    'plot_gallery': 'True',
+    'plot_gallery': True,
     'remove_config_comments': True,
     'doc_module': ('demregpy', 'sunpy'),
     'only_warn_on_example_error': True,

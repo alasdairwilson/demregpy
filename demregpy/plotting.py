@@ -2,6 +2,8 @@
 Plotting helpers for demregpy.
 """
 
+import importlib
+
 import numpy as np
 
 __all__ = [
@@ -71,7 +73,7 @@ def plot_dem(
         The Matplotlib errorbar container.
     """
     try:
-        import matplotlib.pyplot as plt
+        plt = importlib.import_module("matplotlib.pyplot")
     except ImportError as exc:
         raise ImportError(
             "plot_dem requires matplotlib. Install demregpy with the 'plot' "
