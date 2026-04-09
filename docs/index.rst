@@ -2,134 +2,55 @@
 demregpy Documentation
 **********************
 
-``demregpy`` recovers differential emission measures from multi-channel data
-using regularized inversion. It works with count arrays and temperature
-response matrices, so the same interface can be used for synthetic data, AIA
-examples, time series, and small maps.
+``demregpy`` is a python package for recovering differential emission measures (DEMs), and their associated errors, from multi-channel data solar data using regularized inversion.
+It can recover a DEM from any data source where we have data arrays and instrument temperature response matrices, so the same interface can be used for any solar instrument, e.g. AIA, XRT, EIS, RHESSI, etc., in any data shape, single-pixel, 1D, 2D, or timeseries.
+The documentation includes a quick start guide, an example gallery, and a complete API reference.
 
 .. toctree::
    :hidden:
    :maxdepth: 2
 
    api
+   installation
+   using_dn2dem
    weighting
    generated/gallery/index
    whatsnew/index
 
-.. grid:: 1 1 2 2
+.. grid:: 1 1 2 3
    :gutter: 3
 
-   .. grid-item-card:: Synthetic Example
-      :link: generated/gallery/running_demregpy
+   .. grid-item-card:: Installation
+      :link: installation
       :link-type: doc
 
-      Run ``dn2dem`` on a small synthetic DEM.
+      Install ``demregpy`` and the optional AIA-related dependencies.
 
-   .. grid-item-card:: AIA Example
-      :link: generated/gallery/running_demregpy_on_aia_data
+   .. grid-item-card:: Quick Start
+      :link: using_dn2dem
       :link-type: doc
 
-      Run one local AIA inversion using the bundled test data.
+      Tutorial on using demregpy, by recovering DEMs from synthetic data.
 
-   .. grid-item-card:: Weighting Schemes
-      :link: weighting
+   .. grid-item-card:: Example Gallery
+      :link: generated/gallery/index
       :link-type: doc
 
-      See how ``gloci``, ``dem_norm0``, and related options affect the solve.
+      Gallery of examples for using demregpy.
 
    .. grid-item-card:: API Reference
       :link: api
       :link-type: doc
 
-      Reference for the public functions and lower-level routines.
+      A complete API reference for demregpy.
 
-Quick Start
-===========
-
-The main entry point is :func:`demregpy.dn2dem`. The core inputs are:
-
-- ``dn_in``: channel counts
-- ``edn_in``: uncertainties on those counts
-- ``tresp`` and ``tresp_logt``: the temperature response matrix and its log10(T) grid
-- ``temps``: temperature-bin edges for the recovered DEM
-
-A minimal call looks like this:
-
-.. code-block:: python
-
-   from demregpy import dn2dem
-
-   dem, edem, elogt, chisq, dn_reg = dn2dem(
-       dn_in,
-       edn_in,
-       tresp,
-       tresp_logt,
-       temps,
-   )
-
-``dem`` is the recovered solution. ``edem`` and ``elogt`` give the vertical and
-horizontal uncertainties, ``chisq`` is the final reduced chi-squared, and
-``dn_reg`` is the reconstruction in data space.
-
-.. grid:: 1 1 2 2
-   :gutter: 3
-
-   .. grid-item-card:: Full Example Gallery
-      :link: generated/gallery/index
+   .. grid-item-card:: Topic Guides
+      :link: weighting
       :link-type: doc
 
-      Synthetic data, AIA pixels, patches, and DEMograms.
+      In depth explanation of aspects of using demregpy.
 
-   .. grid-item-card:: What Changed
-      :link: whatsnew/index
-      :link-type: doc
+Release Notes
+=============
 
-      Release notes and changelog entries.
-
-Example Highlights
-==================
-
-The gallery uses short runnable examples rather than long scripts.
-
-.. grid:: 1 1 2 3
-   :gutter: 3
-
-   .. grid-item-card:: Single Synthetic DEM
-      :link: generated/gallery/synthetic/plot_synthetic_single_pixel
-      :link-type: doc
-
-      A basic inversion with a known input DEM.
-
-   .. grid-item-card:: Compare Weighting Modes
-      :link: generated/gallery/synthetic/plot_synthetic_weighting_modes
-      :link-type: doc
-
-      Compare the main weighting paths on one synthetic case.
-
-   .. grid-item-card:: AIA Single Pixel
-      :link: generated/gallery/aia/plot_aia_single_pixel
-      :link-type: doc
-
-      Recover a DEM from one pixel in the local AIA test maps.
-
-   .. grid-item-card:: AIA Patch
-      :link: generated/gallery/aia/plot_aia_patch
-      :link-type: doc
-
-      Run the inversion on a small AIA patch.
-
-   .. grid-item-card:: AIA DEMogram
-      :link: generated/gallery/aia/plot_aia_demogram
-      :link-type: doc
-
-      Build an area-summed DEMogram from a small flare time series.
-
-The AIA examples use bundled local test data.
-
-Reference Guide
-===============
-
-- :doc:`api` documents the public API and the lower-level inversion functions.
-- :doc:`weighting` explains the main weighting paths and related solver options.
-- :doc:`generated/gallery/index` collects the runnable examples.
-- :doc:`whatsnew/index` tracks changes across releases.
+- :doc:`whatsnew/index` to see what has changed.
