@@ -51,7 +51,7 @@ EM(T) = DN / R(T)
 
 where R(T) is the temperature response of the filter.
 
-This means that the EM loci curve of a filter is the absolute maximum possible EM at each temperature that is consistent with the observed data number in that filter. 
+This means that the EM loci curve of a filter is the absolute maximum possible EM at each temperature that is consistent with the observed data number in that filter.
 If the EM were above the loci curve then the instrument would have observed a larger data number than it did.
 
 If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves from all filters to build the weighting.

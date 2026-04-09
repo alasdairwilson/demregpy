@@ -82,7 +82,7 @@ Relation to Other DEM Methods
 
 Compared to parametric DEM fitting methods, ``demregpy`` does not begin by assuming that the DEM is a single Gaussian, a small sum of components, or some other fixed functional form.
 That makes it less prescriptive; the result is controlled by the data, the response matrix, and the regularization choices rather than by a small set of model parameters.
-This also makes it more vulnerable to systematic errrors in e.g. in the temperature response functions.
+This also makes it more vulnerable to systematic errors in e.g. in the temperature response functions.
 
 Compared to sampling-based approaches such as `demcmc <https://demcmc.readthedocs.io/en/latest/index.html>`_, ``demregpy`` uses a deterministic GSVD-based solve rather than Monte Carlo sampling.
 That makes it computationally fast and practical for lines, maps, and time-dependent data where many DEMs need to be recovered in one run.
