@@ -1,7 +1,7 @@
 """
-=================
+==================
 AIA Flare DEMogram
-=================
+==================
 
 Build an area-summed DEMogram from a small local AIA flare time series.
 """

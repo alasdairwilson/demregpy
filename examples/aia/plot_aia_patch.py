@@ -1,7 +1,7 @@
 """
-==================
+===================
 AIA Patch Inversion
-==================
+===================
 
 Run ``dn2dem`` on a small local AIA patch and inspect one recovered temperature slice.
 """

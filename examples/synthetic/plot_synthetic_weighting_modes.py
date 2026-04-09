@@ -1,7 +1,7 @@
 """
-===========================
+============================
 Compare Weighting Strategies
-===========================
+============================
 
 Compare the default self-normalized constraint, ``gloci``, and a user-supplied weight.
 """
