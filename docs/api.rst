@@ -3,19 +3,12 @@ demregpy (`demregpy`)
 
 .. automodapi:: demregpy
 
-Plotting
-========
+Plotting (`demregpy.plotting`)
+******************************
 
-.. toctree::
-   :maxdepth: 1
+.. automodapi:: demregpy.plotting
 
-   api/demregpy.plot_dem
+Synthetic Data (`demregpy.synthetic`)
+*************************************
 
-Synthetic Data
-==============
-
-.. toctree::
-   :maxdepth: 1
-
-   api/demregpy.synthesize_counts
-   api/demregpy.SyntheticObservation
+.. automodapi:: demregpy.synthetic
