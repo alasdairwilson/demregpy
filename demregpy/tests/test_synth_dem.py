@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from demregpy.dn2dem import dn2dem
+from demregpy.synthetic import synthesize_counts
 
 
 def _synthetic_case(
@@ -41,14 +42,9 @@ def _synthetic_case(
                 -((tresp_logt - p_m) ** 2) / (2 * p_s ** 2)
             )
 
-    # Build DN from DEM and response (mirrors example)
-    step = tresp_logt[1] - tresp_logt[0]
-    dlogt = np.full(nt, step)
-    tc_full = np.zeros((nt, nf))
-    for i in range(nf):
-        tc_full[:, i] = dem_mod * trmatrix[:, i] * 10 ** tresp_logt * np.log(10 ** dlogt)
-    dn_in = np.sum(tc_full, axis=0)
-    edn_in = 0.1 * dn_in
+    synthetic = synthesize_counts(dem_mod, tresp_logt, trmatrix, error_fraction=0.1)
+    dn_in = synthetic.dn_in
+    edn_in = synthetic.edn_in
 
     # Temps for dn2dem are bin edges
     logtemps = np.linspace(tresp_logt.min(), tresp_logt.max(), nt + 1)
