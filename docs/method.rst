@@ -1,6 +1,6 @@
-******************
+********************
 How the Method Works
-******************
+********************
 
 ``demregpy`` uses deterministic regularized inversion to recover differential emission measures from multi-channel solar data.
 The method follows the approach described by `Hannah and Kontar (2012) <https://doi.org/10.1051/0004-6361/201117576>`_ and the earlier `demreg implementation in IDL <https://github.com/ianan/demreg>`_.
