@@ -1,6 +1,4 @@
-"""
-Produce DEMs by regularized inversion of solar data
-"""
+"""Lower-level DEM inversion routines used by :func:`demregpy.dn2dem`."""
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -22,56 +20,27 @@ def demmap(
     rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False
 ):
     """
-    Compute the DEM for an array of pixels of length na with nf filters with temp response matrix K.
+    Recover DEMs for a stack of one-dimensional observations.
 
-    Where the data counts, g, are given by:
-
-        g=K.DEM
-
-    Regularized approach solves this via
-
-        ||K.DEM-g||^2 + lamb ||L.DEM||^2=min
-
-    L is a zeroth order constraint matrix and lamb is the rrgularisation parameter
-
-    The regularisation is solved via the GSVD of K and L (using dem_inv_gsvd)
-    which provides the singular values (sva,svb) and the vectors u,v and w
-    with he properties U.T*K*W=sva*I and V.T L W = svb*I
-
-    The dem is then obtained by:
-
-        DEM_lamb = Sum_i (sva_i/(sva_i^2+svb_i^1*lamb)) * (g.u) w
-
-    or
-
-        K^-1=K^dag= Sum_i (sva_i/(sva_i^2+svb_i^1*lamb)) * u.w
-
-    We know all the bits of it apart from lamb. We get this from the Discrepancy principle (Morozon, 1967)
-    such that the lamb chosen gives a DEM_lamb that produces a specified reduced chisq in data space which
-    we call the "regularization parameter" (or reg_tweak) and we normally take this to be 1. As we also want a
-    physically real solution (e.g. a DEM_lamb that is positive) we iteratively increase reg_tweak until a
-    positive solution is found (or a max number of iterations is reached).
-
-    Once a solution that satisfies this requirement is found the uncertainties are worked out:
-    the vertical errors (on the DEM) are obtained by propagation of errors on dn through the
-    solution; horizontal (T resolution) is how much K^dag#K deviates from I, so measuring
-    spread from diagonal but also if regularization failed at that T.
+    Each row of ``dd`` is treated as an independent observation with the same
+    temperature response matrix. This function is the lower-level workhorse used
+    by :func:`demregpy.dn2dem` after the input arrays have been reshaped.
 
     Parameters
     ----------
     dd : array_like
-        The dn counts for each channel.
+        Input counts with shape ``(na, nf)``.
     ed : array_like
-        The error on the dn counts.
+        Uncertainties on ``dd`` with the same shape.
     rmatrix : array_like
-        The trmatrix for each channel.
+        Response matrix with shape ``(nt, nf)``.
     logt : array_like
-        Log of the temperature bin averages.
+        Temperature-bin centres in log10(T).
     dlogt : array_like
-        Size of the temperature bins.
+        Width of each temperature bin in log10(T).
     glc : array_like
-        Indices of the filters for which gloci curves should be used to set the initial L constraint
-        (if called from dn2dem_pos, then all 1s or 0s).
+        Length-``nf`` 0/1 mask selecting the filters used for EM loci
+        weighting.
     reg_tweak : float, optional
         Initial chisq target. Default is 1.0.
     max_iter : int, optional
@@ -91,15 +60,15 @@ def demmap(
     Returns
     -------
     dem : ndarray
-        The DEM(T).
+        DEM values with shape ``(na, nt)``.
     edem : ndarray
-        The error on the DEM(T).
+        Vertical uncertainties on ``dem``.
     elogt : ndarray
-        The error on logt.
+        Horizontal temperature resolution estimates in log10(T).
     chisq : ndarray
-        The chisq for the dem compared to the dn.
+        Reduced chi-squared values for each observation.
     dn_reg : ndarray
-        The simulated dn for each filter for the recovered DEM.
+        Reconstructed counts with shape ``(na, nf)``.
     """
     na = dd.shape[0]
     nf = rmatrix.shape[1]
@@ -171,22 +140,23 @@ def dem_unwrap(
     rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False
 ):
     """
-    Execute a series of DEM calculations in serial when provided an array of DEM input params.
+    Run :func:`dem_pix` over a stack of observations in serial.
 
     Parameters
     ----------
     dn : ndarray
-        The data.
+        Input counts with shape ``(ndem, nf)``.
     ed : ndarray
-        Data errors.
+        Uncertainties on ``dn`` with the same shape.
     rmatrix : ndarray
-        Temperature response of each channel.
+        Response matrix with shape ``(nt, nf)``.
     logt : array_like
         Log temperature bins.
     dlogt : array_like
         Size of temperature bins.
     glc : array_like
-        Indices of the filters for which gloci curves should be used to set the initial L constraint
+        Length-``nf`` 0/1 mask selecting the filters used for EM loci
+        weighting.
     reg_tweak : float, optional
         Initial Chisq target, by default 1.0
     max_iter : int, optional
@@ -205,15 +175,15 @@ def dem_unwrap(
     Returns
     -------
     dem : ndarray
-        The DEM(T)
+        DEM values with shape ``(ndem, nt)``.
     edem : ndarray
-        the error on the DEM(T)
+        Vertical uncertainties on ``dem``.
     elogt : ndarray
-        the error on logt
+        Horizontal temperature resolution estimates in log10(T).
     chisq : array_like
-        the chisq for the dem compared to the dn
+        Reduced chi-squared values.
     dn_reg : ndarray
-        the simulated dn for each filter for the recovered DEM
+        Reconstructed counts with shape ``(ndem, nf)``.
     """
     ndem = dn.shape[0]
     nt = logt.shape[0]
@@ -244,14 +214,14 @@ def dem_unwrap(
 def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
             rgt_fact=1.5, dem_norm0=None, nmu=42, warn=True, l_emd=False):
     """
-    Calculate the DEM etc. of a single pixel.
+    Recover a DEM for one observation vector.
 
     Parameters
     ----------
-    dn : array_like
-        The data.
-    ed : array_like
-        Data errors.
+    dnin : array_like
+        Input counts for one observation.
+    ednin : array_like
+        Uncertainties on ``dnin``.
     rmatrix : ndarray
         Temperature response of each channel.
     logt : array_like
@@ -259,7 +229,8 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     dlogt : array_like
         Size of temperature bins.
     glc : array_like
-        Indices of the filters for which gloci curves should be used to set the initial L constraint
+        Length-``nf`` 0/1 mask selecting the filters used for EM loci
+        weighting.
     reg_tweak : float, optional
         Initial Chisq target, by default 1.0
     max_iter : int, optional
@@ -278,15 +249,15 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     Returns
     -------
     dem : ndarray
-        The DEM(T)
+        Recovered DEM values.
     edem : ndarray
-        the error on the DEM(T)
+        Vertical uncertainties on ``dem``.
     elogt : ndarray
-        the error on logt
+        Horizontal temperature resolution estimates in log10(T).
     chisq : array_like
-        the chisq for the dem compared to the dn
+        Reduced chi-squared value.
     dn_reg : ndarray
-        the simulated dn for each filter for the recovered DEM
+        Reconstructed counts for each filter.
     """
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
@@ -447,31 +418,33 @@ def _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak):
 
 def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
     """
-    dem_reg_map computes the regularization parameter.
+    Select the regularization parameter from a GSVD solution.
 
     Parameters
     ----------
-    sigmaa :
-        gsv vector
-    sigmab :
-        gsv vector
-    U :
-        gsvd matrix
-    W :
-        gsvd matrix
+    sigmaa : array_like
+        GSVD ``alpha`` singular values.
+    sigmab : array_like
+        GSVD ``beta`` singular values.
+    U : ndarray
+        GSVD ``U`` matrix.
+    W : ndarray
+        GSVD ``W`` matrix.
         Unused.
-    data :
-        dn data
-    err :
-        dn error
-    reg_tweak :
-        how much to adjust the chisq each iteration
+    data : array_like
+        Data vector in the weighted space used by the inversion.
+    err : array_like
+        Uncertainty vector corresponding to ``data``.
+    reg_tweak : float
+        Target chi-squared scaling used when choosing the regularization
+        parameter.
+    nmu : int, optional
+        Number of candidate regularization parameters to sample.
 
     Returns
     -------
-    opt :
-        regularization parameter
-
+    float
+        Selected regularization parameter.
     """
     mu, misfit_curve, err_term = _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu)
     return _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak)
@@ -510,34 +483,28 @@ def dem_inv_gsvd_diag(A, bdiag):
 
 
 def dem_inv_gsvd(A, B):
-    """Perform the generalised singular value decomposition of two matrices A,B.
-
-    The decomposition of the following linear equations:
-
-        A=U*SA*W^-1
-        B=V*SB*W^-1
-
-    Produces gsvd matrices u,v and the weight W and diagonal matrices SA and SB.
+    """
+    Perform the generalised singular value decomposition of ``A`` and ``B``.
 
     Parameters
     ----------
     A : ndarray
-        cross section matrix.
+        Response-like matrix.
     B : ndarray
-        regularisation matrix (square).
+        Regularisation matrix.
 
     Returns
     -------
     alpha : array_like
-        the vector of the diagonal values of SA.
+        Diagonal values of ``SA``.
     beta : array_like
-        the vector of the diagonal values of SB.
+        Diagonal values of ``SB``.
     U : ndarray
-        decomposition product matrix.
+        Left GSVD factor for ``A``.
     V : ndarray
-        decomposition product matrix.
+        Left GSVD factor for ``B``.
     w2 : ndarray
-        decomposition product weights.
+        Right GSVD factor.
     """
     bdiag = np.diagonal(B)
     if np.all(B == np.diag(bdiag)):

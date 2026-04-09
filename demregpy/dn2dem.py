@@ -1,6 +1,4 @@
-"""
-Turn Solar data and temperature responses into DEM(T)
-"""
+"""Top-level DEM inversion interface."""
 
 import numpy as np
 
@@ -33,27 +31,25 @@ def _normalize_gloci(gloci, nf):
 def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, gloci=0,
            rgt_fact=1.5, dem_norm0=None, nmu=40, warn=False, emd_int=False, emd_ret=False, l_emd=False, non_pos=False):
     """
-    Perform a Regularization on solar data, returning the Differential Emission Measure (DEM).
+    Recover a differential emission measure from channel counts.
 
-    Basically, calculates DEM(T) in the equation: g(f)=K(f,T)#DEM(T) using the method
-    of Hannah & Kontar A&A 553 2013.
+    This is the main public wrapper around the lower-level regularised
+    inversion routines. It accepts single-pixel, time-series, or small map-like
+    arrays whose last axis is filter/channel.
 
     Parameters
     ----------
     dn_in : array_like
-        The dn counts in dn/px/s for each filter is shape nx*ny*nf (nf=number of filters
-        nx,ny = spatial dimensions, one or both of which can be size 0 for 0d/1d problems.
-        (or nt,nf or nx,nt,nf etc etc to get time series)
+        Input channel counts. The last axis must be filter/channel, so valid
+        shapes include ``(nf,)``, ``(n, nf)``, and ``(nx, ny, nf)``.
     edn_in : array_like
-        The error on the dn values in the same units and same dimensions.
+        Uncertainties on ``dn_in`` with the same shape and units.
     tresp : array_like
-        The temperature response matrix size n_tresp by nf
+        Temperature response matrix with shape ``(nt_resp, nf)``.
     tresp_logt : array_like
-        The temperatures in log t which the temperature response matrix corresponds to.
-        E.G if your tresp matrix runs from 5.0 to 8.0 in steps of 0.05 then this is
-        the input to tresp_logt
+        Log10 temperature grid for the first axis of ``tresp``.
     temps : array_like
-        The temperatures at which to calculate a DEM, array of length nt.
+        Temperature-bin edges at which to recover the DEM.
     reg_tweak : float, optional
         The initial normalised chisq target. Default is 1.0.
     max_iter : int, optional
@@ -62,23 +58,19 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         returned instead (which may contain negative values).
         Default is only 10 - although non_pos=True will set as 1.
     gloci : int or array_like, optional
-        If no dem_norm0 given (or dem_norm0 array of 1s), choose weighting for the
-        inversion process (L constraint matrix).
-        Scalar forms:
-        1: uses the min of EM loci curves from all filters to weight L.
-        0: uses two reg runs - first with L=diag(1/dT) and DEM result from this used to weight L for second run.
-        Array form:
-        a length-nf 0/1 mask selecting which filters should contribute to the EM loci weighting.
+        Weighting mode used when ``dem_norm0`` is not supplied. A scalar ``0``
+        uses the self-normalised weighting scheme, a scalar ``1`` uses all EM
+        loci curves, and a length-``nf`` 0/1 mask selects which filters
+        contribute to the EM loci weighting.
         Default is 0.
     rgt_fact : float, optional
         The factor by which rgt_tweak increases each iteration.
         As the target chisq increases there is more flexibility allowed on the DEM.
         Default is 1.5.
     dem_norm0 : array_like, optional
-        This is an array of length nt which contains an initial guess of the DEM solution providing a weighting
-        for the inversion process (L constraint matrix). The actual values of the normalisation
-        do not matter, only their relative values.
-        If no dem_norm0 given then L weighting is based on value of gloci (0 is default).
+        Initial DEM-shaped weighting for the constraint matrix. Only the
+        relative values matter. If omitted, the weighting is determined from
+        ``gloci``.
         Default is None.
     nmu : int, optional
         Number of reg param samples to calculate (default (or <=40) 500 for 0D, 42 for map).
@@ -87,35 +79,35 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         Print out any warnings (always warn for 1D, default no for higher dim data).
         Default is False.
     emd_int : bool, optional
-        Do the regularization in EMD [cm^-5] instead of DEM [cm^-5 K^-1] space? (default False).
-        In some circumstances this does seem to help (particularly at higher T), but needs
-        additional tweaking, so why it is not the default.
+        Perform the inversion in emission measure distribution space rather
+        than DEM space.
         Default is False.
     emd_ret : bool, optional
-        Return EMD solution instead of EMD [cm^-5] instead of DEM [cm^-5 K^-1] (default False).
+        Return the result in EMD units instead of DEM units.
         Default is False.
     l_emd : bool, optional
-        Remove sqrt factor in constraint matrix, provides better solutions with EMD (and if higher T issues?)
-        (default False, but True with emd_int=True).
+        Remove the square-root factor in the constraint matrix. This is mainly
+        useful with ``emd_int=True``.
         Default is False.
     non_pos : bool, optional
-        Return the first solution irrespective of it being positive or not (default False).
-        Done by setting max_iter=1, so user max_iter value ignored.
+        Return the first solution even if it contains negative values. This is
+        implemented by forcing ``max_iter=1``.
         Default is False.
 
     Returns
     -------
     dem : ndarray
-        The DEM, has shape nx*ny*nt and units out depends on the input units of tresp and setting of emd_ret
+        Recovered DEM or EMD. The output shape matches the input shape with the
+        filter axis replaced by temperature bin.
     edem : ndarray
-        Vertical errors on the DEM, same units as DEM.
+        Vertical uncertainties on ``dem``.
     elogt : ndarray
-        Horizontal errors on temperature, as the name suggests in logT.
+        Horizontal temperature resolution estimates in log10(T).
     chisq : ndarray
-        The final chisq, shape nx*ny. Pixels which have undergone more iterations will in general have higher chisq.
+        Final reduced chi-squared values.
     dn_reg : ndarray
-        The simulated dn counts, shape nx*ny*nf. This is obtained by multiplying the DEM(T) by the filter
-        response K(f,T) for each channel, very important for comparing with the initial data.
+        Counts reconstructed from the recovered solution, with the same shape as
+        ``dn_in``.
     """
     if len(temps) < 4:
         raise ValueError("temps must define at least 3 DEM bins")

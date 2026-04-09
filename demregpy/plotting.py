@@ -70,7 +70,7 @@ def plot_dem(
     ax : `matplotlib.axes.Axes`
         Axes used for the plot.
     container : `matplotlib.container.ErrorbarContainer`
-        The Matplotlib errorbar container.
+        Matplotlib container returned by ``Axes.errorbar``.
     """
     try:
         plt = importlib.import_module("matplotlib.pyplot")

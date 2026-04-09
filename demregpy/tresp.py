@@ -1,6 +1,4 @@
-"""
-Temperature response data.
-"""
+"""Temperature response helpers and bundled AIA response files."""
 import importlib
 from pathlib import Path
 
@@ -13,7 +11,7 @@ aia_tresp_v9 = Path(__file__).parent / 'data' / 'aia_trespv9_en.dat'
 
 def load_aia_response(response_file=aia_tresp):
     """
-    Load an AIA temperature response file into the form used by ``dn2dem``.
+    Load an AIA temperature response file into the matrix form used by ``dn2dem``.
 
     Parameters
     ----------
@@ -26,7 +24,7 @@ def load_aia_response(response_file=aia_tresp):
     channels : list[str]
         Channel names such as ``["A94", "A131", ...]``.
     tresp_logt : ndarray
-        Log-temperature grid of the response file.
+        Log10 temperature grid of the response file.
     trmatrix : ndarray
         Temperature response matrix with shape ``(nt, nf)``.
     """
@@ -47,9 +45,4 @@ def load_aia_response(response_file=aia_tresp):
         trmatrix[:, i] = trin["tr"][i]
     return channels, tresp_logt, trmatrix
 
-__all__ = [
-    'aia_tresp',
-    'aia_tresp_nb',
-    'aia_tresp_v9',
-    'load_aia_response',
-]
+__all__ = ["aia_tresp", "aia_tresp_nb", "aia_tresp_v9", "load_aia_response"]
