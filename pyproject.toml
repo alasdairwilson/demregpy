@@ -16,7 +16,7 @@ authors = [
   { name = "Alasdair Wilson", email = "alasdair.wlsn@gmail.com" },
 ]
 dependencies = [
-  "matplotlib>=3.8.0",
+  "matplotlib>=3.8.4",
   "numpy>=2.0.0",
   "tqdm>=4.67.0",
   "threadpoolctl>=3.6.0",
@@ -41,6 +41,7 @@ tests = [
 docs = [
   "demregpy[responses]",
   "sphinx",
+  "sphinx-design",
   "sphinx-automodapi",
   "sphinx-changelog",
   "sunpy-sphinx-theme",

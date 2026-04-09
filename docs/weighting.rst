@@ -5,13 +5,13 @@ Weighting Schemes
 ``dn2dem`` supports three main weighting schemes, along with a few related options
 that change how the inversion is carried out.
 
-For the API details, see :doc:`api`.
-For runnable scripts, see the example gallery.
+See :doc:`api` for the full function signatures and the example gallery for
+runnable scripts.
 
 Overview
 ========
 
-The main entry point is ``demregpy.dn2dem``. The weighting-related arguments are:
+The main weighting-related arguments in ``demregpy.dn2dem`` are:
 
 - ``gloci``: choose between the default self-normalized weighting and EM loci weighting,
   either for all filters or for a selected subset.
@@ -21,16 +21,16 @@ The main entry point is ``demregpy.dn2dem``. The weighting-related arguments are
 Default Self-Normalized Weighting
 =================================
 
-If you do not pass either ``gloci=1`` or ``dem_norm0``, and if ``gloci`` does not select
-any filters, :func:`demregpy.dn2dem` uses the default self-normalized approach described
-in its parameter documentation.
+If you do not pass ``dem_norm0``, and if ``gloci`` does not select any filters,
+:func:`demregpy.dn2dem` uses the default self-normalized weighting.
 
 In this case:
 
 1. A first regularized solve is used to estimate a DEM-like shape.
 2. That estimated shape is turned into the weighting used in the main solve.
 
-The weighting comes from the inversion itself rather than from an external prior.
+The weighting is estimated from the inversion itself rather than supplied by
+the caller.
 
 Use it like this:
 
@@ -47,8 +47,8 @@ Use it like this:
 EM Loci Weighting
 =================
 
-If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves from all
-filters to build the weighting instead of using the default self-normalized first pass.
+If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves
+from all filters to build the weighting.
 
 You can also pass a length-``nf`` 0/1 mask to use only selected filters.
 
@@ -78,16 +78,14 @@ or
        gloci=[1, 1, 0, 0, 1, 1],
    )
 
-Here the weighting is built from the minimum of the EM loci curves rather than from
-the self-normalized first pass. It is best treated as a different assumption about the
-problem, not as a general improvement over the default scheme.
+Here the weighting comes from the EM loci curves rather than the self-normalized
+first pass.
 
 User-Supplied Weighting
 =======================
 
-If you already have a DEM shape you want to use as a prior, you can pass it via
-``dem_norm0``.
-Only the relative shape matters, not the absolute normalization.
+If you already have a DEM-shaped weighting curve, you can pass it through
+``dem_norm0``. Only the relative shape matters, not the absolute scale.
 
 Use it like this:
 
@@ -104,32 +102,28 @@ Use it like this:
        dem_norm0=dem_weight,
    )
 
-Here the weighting comes entirely from the supplied shape. Only the relative variation
-matters, not the absolute scale.
+Here the weighting comes directly from the supplied shape.
 
 Related Options
 ===============
 
-These are not separate weighting schemes, but they interact closely enough with the
-weighting to be worth noting here.
+These are not separate weighting schemes, but they change how the weighted
+problem is solved.
 
 ``emd_int=True``
 ----------------
 
-This performs the internal regularization in EMD space rather than DEM space. That
-changes the space in which the weighting is applied internally.
+This performs the internal regularization in EMD space rather than DEM space.
 
 ``l_emd=True``
 --------------
 
-This changes the form of the constraint matrix used in the solve.
+This changes the form of the constraint matrix.
 
 ``non_pos=True``
 ----------------
 
-This disables the positivity-enforcing iteration by forcing a single pass. It does not
-define a separate weighting scheme by itself, but it does change how the weighted
-solution is filtered.
+This disables the positivity-enforcing iteration by forcing a single pass.
 
 Comparing Modes
 ===============
@@ -148,8 +142,8 @@ In all three cases, the same output API is returned:
 - ``chisq``
 - ``dn_reg``
 
-Comparing those outputs across modes is a simple way to see how strongly a result
-depends on the weighting assumption.
+Comparing those outputs across modes shows how strongly a result depends on the
+weighting choice.
 
 See Also
 ========
