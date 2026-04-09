@@ -75,10 +75,7 @@ def plot_dem(
     try:
         plt = importlib.import_module("matplotlib.pyplot")
     except ImportError as exc:
-        raise ImportError(
-            "plot_dem requires matplotlib. Install demregpy with the 'plot' "
-            "extra to use plotting helpers."
-        ) from exc
+        raise ImportError("plot_dem requires matplotlib to be installed.") from exc
 
     logt = np.asarray(logt)
     dem = np.asarray(dem)
