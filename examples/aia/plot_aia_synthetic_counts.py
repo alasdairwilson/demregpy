@@ -4,7 +4,7 @@ Synthetic AIA Counts
 ====================
 
 Generate synthetic AIA channel counts from the bundled AIA temperature response functions.
-This is useful for building controlled AIA test problems before moving on to map data or full inversion runs.
+This is a simple way to build controlled AIA test problems before moving on to map data.
 """
 
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ from demregpy.synthetic import synthesize_counts
 
 # %%
 # The bundled AIA response curves can be used directly to make synthetic AIA count vectors from any DEM model defined on the response temperature grid.
-# This is a simple way to build controlled AIA test problems without starting from AIA maps.
+# This lets us test AIA response behaviour without the extra complications of map calibration or pixel selection.
 
 channels, tresp_logt, trmatrix = load_aia_response()
 
@@ -41,9 +41,9 @@ print("Synthetic DN:", synthetic.dn_in)
 print("Synthetic uncertainties:", synthetic.edn_in)
 
 # %%
-# The point of this example is to connect three pieces of the workflow.
-# A DEM model on the left is folded through the AIA responses in the middle to produce the synthetic channel counts on the right.
-# The resulting ``synthetic.dn_in`` and ``synthetic.edn_in`` can then be passed straight into ``dn2dem``.
+# The left panel is the input DEM.
+# The middle panel shows the bundled AIA responses used to fold that DEM into channel counts.
+# The right panel is the resulting synthetic AIA dataset, which can be passed straight into ``dn2dem``.
 
 fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
 

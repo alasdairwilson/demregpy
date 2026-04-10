@@ -17,23 +17,26 @@ from demregpy.plotting import plot_dem
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # Load the bundled AIA response file and one pixel from the local FITS fixtures.
+# The map values are converted to count rates by dividing by exposure time before the inversion.
+# A moderately bright coronal pixel is used so the example is less noisy than a quiet-Sun pixel near the map centre.
 # The example uses local data rather than remote downloads so it is deterministic and quick to run.
 maps = load_aia_full_disk_maps()
+rate_maps = [amap / amap.exposure_time for amap in maps]
 channels, tresp_logt, trmatrix = load_aia_response()
 
-x = maps[0].data.shape[0] // 2
-y = maps[0].data.shape[1] // 2
-dn_in = np.array([amap.data[x, y] for amap in maps], dtype=float)
-edn_in = 0.1 * dn_in + 1e-8
-temps = 10 ** np.linspace(5.7, 7.1, num=17)
+x = 430
+y = 520
+dn_in = np.array([amap.data[x, y] for amap in rate_maps], dtype=float)
+edn_in = 0.1 * dn_in + 1
+temps = 10 ** np.linspace(5.6, 7.4, num=21)
 mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 
 print(f"Using pixel ({x}, {y})")
 print("channels:", channels)
-print("input DN:", dn_in)
+print("input DN / pix / s:", dn_in)
 
 # Recover a DEM for that pixel.
-# The uncertainties here are a simple fractional model, which keeps the example compact.
+# The uncertainties here use the same flat-plus-fractional model as the gallery AIA examples.
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
     edn_in,

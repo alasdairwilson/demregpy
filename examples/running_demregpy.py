@@ -4,7 +4,7 @@ Using demregpy
 ==============
 
 Run a small synthetic DEM inversion.
-The example is intentionally compact and mirrors the first steps in the gallery tutorial.
+This is the smallest synthetic example in the repository.
 
 For more focused examples, see the ``examples/synthetic`` directory.
 """
@@ -47,7 +47,7 @@ print("input DN:", synthetic.dn_in)
 print("reconstructed DN:", dn_reg)
 
 # Compare the recovered DEM to the input DEM model and input counts.
-# Looking at the reconstructed counts is often the quickest way to check whether the inversion is behaving sensibly.
+# The reconstructed counts are usually the quickest check of whether the inversion is behaving sensibly.
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
 plot_dem(

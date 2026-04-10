@@ -5,7 +5,8 @@ Synthetic Single Pixel
 
 Recover synthetic DEMs for one spectrum at a time.
 This example starts with a single Gaussian DEM and then repeats the same workflow for a three-component DEM on a finer temperature grid.
-The main lesson is that the public API does not change when the DEM model becomes more structured, but resolving more structure usually benefits from a finer temperature grid and broader response coverage.
+The first case shows the basic pattern of building synthetic counts, running ``dn2dem``, and checking the result in both DEM space and data space.
+The second case shows the same workflow on a more structured DEM, `demregpy` can recover any shape of DEM as long as it is smooth.
 """
 
 import matplotlib.pyplot as plt
@@ -23,8 +24,9 @@ def gaussian_component(logt, amplitude, center, width):
 
 
 # %%
-# The first case is deliberately simple.
-# A single broad peak is a good way to see the basic inversion pattern before trying a more structured DEM.
+# Start with a deliberately simple synthetic problem.
+# A single broad Gaussian is useful because there is a clear input model, so the comparison between the recovered DEM and the original synthetic model is easy to read.
+# The basic pattern for using dn2dem: define counts and uncertainties, run ``dn2dem``, and then compare the recovered DEM and the reconstructed counts to the inputs.
 
 tresp_logt_single = np.linspace(5.7, 6.3, 7)
 response_centers_single = np.array([5.75, 5.85, 5.95, 6.05, 6.15, 6.25])
@@ -51,8 +53,8 @@ dem_out_single, edem_single, elogt_single, chisq_single, dn_reg_single = dn2dem(
 print(f"Single Gaussian chi-squared: {chisq_single:.3f}")
 
 # %%
-# In the single-Gaussian case, the input model is recovered accurately and the reconstructed counts stay close to the synthetic counts.
-# This is the simplest demonstration of what a well-behaved single-pixel inversion looks like.
+# In this simple case, the recovered DEM follows the input model closely and the reconstructed counts stay close to the synthetic counts.
+# That is what a well-behaved single-pixel inversion looks like when the temperature structure is smooth and the synthetic problem is well resolved by the responses.
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
@@ -82,8 +84,9 @@ fig.tight_layout()
 plt.show()
 
 # %%
-# The second case keeps the same one-spectrum workflow but uses a finer temperature grid and a wider set of synthetic channels.
-# That gives the inversion a better chance of distinguishing several peaks in temperature, even though the response curves are still broad.
+# We can increase the complexity of the model plasma without changing any of our methods.
+# By using a more complex model atmosphere, we are tasked with recovering more structure in the DEM.
+# We have also included a finer temperature grid and a wider set of synthetic channels make it more realistic to ask how much multi-thermal structure can be recovered from the same inversion machinery.
 
 tresp_logt_multi = np.linspace(5.7, 7.1, 15)
 response_centers_multi = np.array([5.75, 5.90, 6.05, 6.20, 6.35, 6.50, 6.65, 6.80, 6.95])
@@ -115,7 +118,9 @@ print(f"Triple Gaussian chi-squared: {chisq_multi:.3f}")
 
 # %%
 # The three-component case is more demanding.
-# The point here is not exact recovery of every peak, but how much of the input structure can be recovered once the temperature grid and the response sampling are made finer.
+# The point is not exact recovery of every peak, because broad temperature responses and regularization both smooth the solution.
+# The useful question is whether the recovered DEM captures the main temperature structure and whether the reconstructed counts still explain the synthetic data well.
+# Note that unlike methods which rely on parametric models, the solver does not know that the input DEM is a sum of Gaussians, so it is not trying to fit a small set of model parameters.
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 

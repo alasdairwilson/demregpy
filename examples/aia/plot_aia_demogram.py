@@ -4,7 +4,7 @@ AIA Flare DEMogram
 ==================
 
 Build an area-summed DEMogram from a small local AIA flare time series.
-The cutouts are summed over area first, so the example produces one DEM per time step rather than one DEM per pixel.
+The cutouts are converted to count rates and then summed over area, so the example produces one DEM per time step rather than one DEM per pixel.
 This is a useful pattern when the main question is how the thermal distribution of a region evolves with time rather than how it varies from pixel to pixel.
 """
 
@@ -17,6 +17,8 @@ from demregpy.tests.example_data import load_aia_flare_timeseries
 # %%
 # The spatial information is reduced on purpose here.
 # Summing over the region trades spatial detail for a cleaner time-dependent signal that is easy to turn into a DEMogram.
+# Each channel is converted to a count rate before summing so the time series is not biased by different exposure times.
+# This compact example does not apply an additional time-dependent degradation correction.
 
 map_rows = load_aia_flare_timeseries()
 channels, tresp_logt, trmatrix = load_aia_response()
@@ -28,13 +30,14 @@ cutout_94 = np.zeros((n_times, *map_rows[0][0].data.shape), dtype=float)
 time_tags = []
 
 for i, row in enumerate(map_rows):
+    rate_row = [amap / amap.exposure_time for amap in row]
     time_tags.append(row[0].date.strftime("%Y-%m-%dT%H:%M:%S"))
-    for j, amap in enumerate(row):
-        dn_in[i, j] = np.nansum(amap.data) / float(amap.exposure_time.to_value("s"))
-    cutout_94[i] = row[0].data
+    for j, amap in enumerate(rate_row):
+        dn_in[i, j] = np.nansum(amap.data)
+    cutout_94[i] = rate_row[0].data
 
-edn_in = 0.1 * dn_in + 1e-8
-temps = 10 ** np.linspace(5.7, 7.1, num=17)
+edn_in = 0.1 * dn_in + 1
+temps = 10 ** np.linspace(5.6, 7.4, num=21)
 mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 minutes = 2.0 * np.arange(n_times)
 reference_index = 0
@@ -73,11 +76,11 @@ fig, axes = plt.subplots(2, 2, figsize=(11, 8), constrained_layout=True)
 
 im0 = axes[0, 0].imshow(cutout_94[ref], origin="lower", cmap="sdoaia94")
 axes[0, 0].set_title("94 A Preflare")
-fig.colorbar(im0, ax=axes[0, 0], label="DN / pix")
+fig.colorbar(im0, ax=axes[0, 0], label="DN / pix / s")
 
 im1 = axes[0, 1].imshow(cutout_94[peak], origin="lower", cmap="sdoaia94")
 axes[0, 1].set_title("94 A Near Peak")
-fig.colorbar(im1, ax=axes[0, 1], label="DN / pix")
+fig.colorbar(im1, ax=axes[0, 1], label="DN / pix / s")
 
 extent = [
     minutes[0] - 1,
@@ -115,3 +118,6 @@ for ax in axes[0]:
     ax.set_xticks([])
     ax.set_yticks([])
 plt.show()
+
+#%%
+# Unfortunately, as we can see in the 94 Angstrom channel, AIA is saturated during the flare and after this point DEMs become unphysical as instrument channel counts are no longer proportional to the radiation.

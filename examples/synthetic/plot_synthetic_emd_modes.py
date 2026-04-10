@@ -5,7 +5,7 @@ Compare EMD-Like Modes
 
 Compare the standard DEM inversion with the EMD-oriented options.
 This example uses one broader synthetic DEM so the effect of the different EMD-related options is easier to inspect.
-The comparison is useful when you want to see how much of a result is driven by the data and how much is driven by the chosen constraint.
+The main question is how much of the recovered structure comes from the data and how much comes from the chosen constraint.
 """
 
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ from demregpy.synthetic import synthesize_counts
 
 # %%
 # The input DEM has two overlapping components so the effect of the different constraint choices is easier to see.
-# In a real analysis, this kind of comparison is a way to check how strongly the recovered shape depends on the form of the regularization.
+# In practice this kind of comparison tells you how sensitive the recovered shape is to the form of the regularization.
 
 tresp_logt = np.linspace(5.7, 6.3, 7)
 response_centers = np.array([5.75, 5.85, 5.95, 6.05, 6.15, 6.25])
@@ -69,8 +69,8 @@ solutions = {
 }
 
 # %%
-# The comparison is easiest to read when all three solutions are plotted against the same reference curve.
-# Large differences between the runs are not automatically bad, but they do mean the regularization choice is part of the interpretation.
+# All three solutions are plotted against the same input curve.
+# Large differences are not automatically bad, but they do mean the regularization choice is part of the scientific interpretation.
 
 fig, ax = plt.subplots(figsize=(8, 4.5))
 for label, result in solutions.items():

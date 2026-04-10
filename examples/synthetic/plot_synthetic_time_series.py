@@ -5,7 +5,7 @@ Synthetic Time Series
 
 Run ``dn2dem`` on a small time series to produce a DEMogram.
 The same call used for one spectrum can also be used for a stack of spectra, as long as the last axis is the channel axis.
-The main lesson is that time dependence is handled by the input shape rather than by a different solver API.
+Time dependence is handled by the input shape rather than by a different solver API.
 """
 
 import matplotlib.pyplot as plt
@@ -41,7 +41,7 @@ mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 
 # %%
 # The important part here is the array shape.
-# ``dn2dem`` treats every spectrum along the leading axes independently, so a DEMogram comes naturally from a ``(time, channel)`` input array.
+# ``dn2dem`` treats each spectrum along the leading axes independently, so a DEMogram comes naturally from a ``(time, channel)`` input array.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     synthetic.dn_in,
@@ -57,7 +57,7 @@ print("DEMogram shape:", dem.shape)
 print("Chi-squared range:", float(np.min(chisq)), float(np.max(chisq)))
 
 # %%
-# A DEMogram is usually most useful when it is read together with a simple fit-quality check.
+# A DEMogram is easier to trust if it is read together with a fit-quality check.
 # If one part of the sequence has much worse chi-squared than the rest, that often matters as much as the apparent temperature evolution.
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
