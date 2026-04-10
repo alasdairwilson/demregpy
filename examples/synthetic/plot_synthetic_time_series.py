@@ -4,6 +4,8 @@ Synthetic Time Series
 =====================
 
 Run ``dn2dem`` on a small time series to produce a DEMogram.
+The same call used for one spectrum can also be used for a stack of spectra, as long as the last axis is the channel axis.
+The main lesson is that time dependence is handled by the input shape rather than by a different solver API.
 """
 
 import matplotlib.pyplot as plt
@@ -13,7 +15,8 @@ from demregpy import dn2dem
 from demregpy.synthetic import synthesize_counts
 
 # %%
-# Build a short sequence of synthetic spectra.
+# This sequence is made to brighten and warm slightly with time so the DEMogram has a clear trend.
+# The same shape convention works for any stacked set of spectra, whether the leading axis is time, position, or something else.
 
 tresp_logt = np.linspace(5.7, 6.3, 7)
 response_centers = np.array([5.75, 5.85, 5.95, 6.05, 6.15, 6.25])
@@ -37,7 +40,8 @@ temps = 10 ** np.linspace(tresp_logt.min(), tresp_logt.max(), tresp_logt.size + 
 mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 
 # %%
-# The input shape is ``(time, channel)``.
+# The important part here is the array shape.
+# ``dn2dem`` treats every spectrum along the leading axes independently, so a DEMogram comes naturally from a ``(time, channel)`` input array.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     synthetic.dn_in,
@@ -53,7 +57,8 @@ print("DEMogram shape:", dem.shape)
 print("Chi-squared range:", float(np.min(chisq)), float(np.max(chisq)))
 
 # %%
-# Plot the DEMogram and the per-step goodness of fit.
+# A DEMogram is usually most useful when it is read together with a simple fit-quality check.
+# If one part of the sequence has much worse chi-squared than the rest, that often matters as much as the apparent temperature evolution.
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
@@ -75,3 +80,4 @@ axes[1].set_ylabel(r"$\chi^2$")
 axes[1].set_title("Fit Quality")
 
 fig.tight_layout()
+plt.show()

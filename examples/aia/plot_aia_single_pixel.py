@@ -4,6 +4,8 @@ AIA Single Pixel
 ================
 
 Run ``dn2dem`` on one pixel from the local AIA test fixtures.
+This example shows the smallest realistic AIA workflow in the package: load maps, extract one pixel, run the inversion, and compare the reconstructed counts.
+The same pattern extends directly to any other AIA pixel once you have the channel counts, uncertainties, and response matrix in hand.
 """
 
 import matplotlib.pyplot as plt
@@ -14,7 +16,8 @@ from demregpy.plotting import plot_dem
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # %%
-# Load the bundled response matrix and the local test FITS files.
+# This is the smallest map-based workflow that still looks like a real AIA analysis.
+# The center pixel is only a convenient stand-in for any other location you might want to extract from your own maps.
 
 maps = load_aia_full_disk_maps()
 channels, tresp_logt, trmatrix = load_aia_response()
@@ -32,7 +35,7 @@ print("Channels:", channels)
 print("Input DN:", dn_in)
 
 # %%
-# Recover a DEM for that single pixel.
+# The inversion itself is performed by calling dn2dem.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
@@ -47,7 +50,9 @@ dem, edem, elogt, chisq, dn_reg = dn2dem(
 print(f"chi-squared: {chisq:.3f}")
 
 # %%
-# Plot the recovered DEM and compare the modeled counts to the input counts.
+# The reconstructed counts are often the fastest sanity check when moving from examples to real data.
+# If the channel-by-channel fit looks poor, it usually makes sense to revisit the inputs before over-interpreting the DEM curve.
+# We use the function plot_dem here to show the DEM curve with error bars.
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
@@ -70,3 +75,4 @@ axes[1].set_ylabel("DN / pix / s")
 axes[1].legend()
 
 fig.tight_layout()
+plt.show()

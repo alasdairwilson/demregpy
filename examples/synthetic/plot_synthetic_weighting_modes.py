@@ -4,6 +4,8 @@ Compare Weighting Strategies
 ============================
 
 Compare the default self-normalized constraint, ``gloci``, and a user-supplied weight.
+All three runs use the same synthetic data, so the only difference is how the weighting curve for the constraint is chosen.
+The point is not to pick a universal best option, but to show how much the recovered DEM depends on that choice for one fixed dataset.
 """
 
 import matplotlib.pyplot as plt
@@ -13,7 +15,8 @@ from demregpy import dn2dem
 from demregpy.synthetic import synthesize_counts
 
 # %%
-# Build one synthetic problem and solve it three ways.
+# This setup keeps the data fixed so the weighting choice is the only moving part.
+# If the recovered curves stay close, the result is not especially sensitive to the weighting scheme for this problem.
 
 tresp_logt = np.linspace(5.7, 6.3, 7)
 response_centers = np.array([5.75, 5.85, 5.95, 6.05, 6.15, 6.25])
@@ -66,7 +69,8 @@ for label, result in solutions.items():
     print(f"{label:>12s} chi-squared: {result[3]:.3f}")
 
 # %%
-# Plot the recovered DEMs together.
+# The useful question here is not which line looks nicest, but whether different weighting choices lead to materially different scientific conclusions.
+# If they do, that is usually a sign to inspect the data quality, temperature coverage, and prior assumptions more carefully.
 
 fig, ax = plt.subplots(figsize=(8, 4.5))
 for label, result in solutions.items():
@@ -78,3 +82,4 @@ ax.set_ylabel("DEM")
 ax.set_yscale("log")
 ax.legend()
 fig.tight_layout()
+plt.show()

@@ -4,6 +4,8 @@ AIA Patch Inversion
 ===================
 
 Run ``dn2dem`` on a small local AIA patch and inspect one recovered temperature slice.
+This is the spatial extension of the single-pixel AIA example, with the same response matrix applied independently at each pixel in a small patch.
+The useful idea here is that map-like inputs give map-like outputs, so the solver can be used to build DEM cubes without changing the public API.
 """
 
 import matplotlib.pyplot as plt
@@ -13,7 +15,7 @@ from demregpy import dn2dem, load_aia_response
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # %%
-# Load a small patch around the center of the local test maps.
+# The patch is kept small so the example stays quick, but the shape is the important part rather than the exact field of view.
 
 maps = load_aia_full_disk_maps()
 _channels, tresp_logt, trmatrix = load_aia_response()
@@ -30,6 +32,9 @@ dn_in = np.stack([amap.data[x0:x1, y0:y1] for amap in maps], axis=-1).astype(flo
 edn_in = 0.1 * dn_in + 1e-8
 temps = 10 ** np.linspace(5.7, 7.1, num=17)
 mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
+
+# %%
+# We can run the solver on the patch just as easily as on a single pixel, output dimensions are the same as the input map dimensions with a new temperature axis in place of the channel axis.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
@@ -50,7 +55,9 @@ print(f"Mean chi-squared: {np.mean(chisq):.3f}")
 print(f"Displaying DEM slice near logT={peak_logt:.2f}")
 
 # %%
-# Compare one observed AIA channel with one recovered DEM slice.
+# The temperature slice is one way to inspect a DEM cube without plotting the full result at every pixel.
+# Chi-squared is also a useful diagnostic for checking the quality of the fit at each pixel, and it can be plotted alongside the DEM slice to check for spatial patterns in the fit quality.
+# For example, regions where one or more channels have become saturated may show up as high chi-squared in the fit, and that can be checked against the input data to confirm the cause.
 
 fig, axes = plt.subplots(1, 3, figsize=(13, 4.5))
 
@@ -69,3 +76,4 @@ for ax in axes:
     ax.set_yticks([])
 
 fig.tight_layout()
+plt.show()

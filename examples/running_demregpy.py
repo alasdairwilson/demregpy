@@ -4,6 +4,7 @@ Using demregpy
 ==============
 
 Run a small synthetic DEM inversion.
+The example is intentionally compact and mirrors the first steps in the gallery tutorial.
 
 For more focused examples, see the ``examples/synthetic`` directory.
 """
@@ -16,6 +17,7 @@ from demregpy.plotting import plot_dem
 from demregpy.synthetic import synthesize_counts
 
 # Build a compact synthetic response matrix and one DEM profile.
+# The response curves are simple Gaussians in logT so the example stays focused on the inversion itself.
 tresp_logt = np.linspace(5.7, 6.3, 7)
 response_centers = np.array([5.75, 5.85, 5.95, 6.05, 6.15, 6.25])
 trmatrix = np.zeros((tresp_logt.size, response_centers.size))
@@ -29,6 +31,7 @@ temps = 10 ** np.linspace(tresp_logt.min(), tresp_logt.max(), tresp_logt.size + 
 mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 
 # Recover a DEM from the synthetic channel counts.
+# This is the standard single-spectrum call to ``dn2dem``.
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     synthetic.dn_in,
     synthetic.edn_in,
@@ -44,6 +47,7 @@ print("input DN:", synthetic.dn_in)
 print("reconstructed DN:", dn_reg)
 
 # Compare the recovered DEM to the input DEM model and input counts.
+# Looking at the reconstructed counts is often the quickest way to check whether the inversion is behaving sensibly.
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
 plot_dem(

@@ -4,6 +4,8 @@ Compare EMD-Like Modes
 ======================
 
 Compare the standard DEM inversion with the EMD-oriented options.
+This example uses one broader synthetic DEM so the effect of the different EMD-related options is easier to inspect.
+The comparison is useful when you want to see how much of a result is driven by the data and how much is driven by the chosen constraint.
 """
 
 import matplotlib.pyplot as plt
@@ -13,7 +15,8 @@ from demregpy import dn2dem
 from demregpy.synthetic import synthesize_counts
 
 # %%
-# Use a slightly broader synthetic DEM so the mode differences are easier to see.
+# The input DEM has two overlapping components so the effect of the different constraint choices is easier to see.
+# In a real analysis, this kind of comparison is a way to check how strongly the recovered shape depends on the form of the regularization.
 
 tresp_logt = np.linspace(5.7, 6.3, 7)
 response_centers = np.array([5.75, 5.85, 5.95, 6.05, 6.15, 6.25])
@@ -66,7 +69,8 @@ solutions = {
 }
 
 # %%
-# Plot the three recovered curves.
+# The comparison is easiest to read when all three solutions are plotted against the same reference curve.
+# Large differences between the runs are not automatically bad, but they do mean the regularization choice is part of the interpretation.
 
 fig, ax = plt.subplots(figsize=(8, 4.5))
 for label, result in solutions.items():
@@ -78,3 +82,4 @@ ax.set_ylabel("DEM")
 ax.set_yscale("log")
 ax.legend()
 fig.tight_layout()
+plt.show()

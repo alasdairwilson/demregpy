@@ -4,6 +4,7 @@ Using demregpy on AIA data
 ==========================
 
 Run a small DEM inversion on one pixel from the local AIA test data.
+This is the smallest AIA example in the repository and mirrors the more detailed gallery examples.
 
 For more focused examples, see the ``examples/aia`` directory.
 """
@@ -16,6 +17,7 @@ from demregpy.plotting import plot_dem
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # Load the bundled AIA response file and one pixel from the local FITS fixtures.
+# The example uses local data rather than remote downloads so it is deterministic and quick to run.
 maps = load_aia_full_disk_maps()
 channels, tresp_logt, trmatrix = load_aia_response()
 
@@ -31,6 +33,7 @@ print("channels:", channels)
 print("input DN:", dn_in)
 
 # Recover a DEM for that pixel.
+# The uncertainties here are a simple fractional model, which keeps the example compact.
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
     edn_in,
@@ -45,6 +48,7 @@ print(f"chi-squared: {chisq:.3f}")
 print("reconstructed DN:", dn_reg)
 
 # Plot the recovered DEM and the data fit.
+# The reconstructed counts are plotted alongside the input counts so the quality of the fit is visible immediately.
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
 plot_dem(
