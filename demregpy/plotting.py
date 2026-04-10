@@ -25,7 +25,7 @@ def plot_dem(
     capsize=0,
     elinewidth=2,
     xlabel=r"$\log_{10} T$",
-    ylabel="DEM",
+    ylabel=r"DEM [$\mathrm{cm}^{-5}\,\mathrm{K}^{-1}$]",
     yscale="log",
     **kwargs,
 ):

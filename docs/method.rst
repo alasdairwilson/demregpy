@@ -15,8 +15,8 @@ The data in one channel can be written as an integral of the DEM against that ch
 
    g_i = \int K_i(T)\,\xi(T)\,\mathrm{d}T
 
-Here ``g_i`` is the observed count or intensity in channel ``i``, ``K_i(T)`` is the temperature response, and ``\xi(T)`` is the DEM.
-After choosing a temperature grid, the problem becomes a matrix equation of the form ``g = K \xi``.
+Here :math:`g_i` is the observed count or intensity in channel :math:`i`, :math:`K_i(T)` is the temperature response, and :math:`\xi(T)` is the DEM.
+After choosing a temperature grid, the problem becomes a matrix equation of the form :math:`g = K\xi`.
 
 Why the Inversion Is Hard
 =========================
@@ -31,8 +31,8 @@ What Regularization Does
 Regularization adds a constraint that prefers smooth and stable solutions over noisy ones.
 In ``demregpy``, the solution is found by balancing agreement with the observed data within their uncertainties against a weighted constraint on the DEM shape.
 
-The regularization parameter is chosen from a grid of trial values so that the solution is close to the requested target reduced chi-squared.
-In practice this means the solver looks for a solution with chi-squared close to the level set by ``reg_tweak``.
+The regularization parameter is chosen from a grid of trial values so that the solution is close to the requested target reduced chi-squared, :math:`\chi_\nu^2`.
+In practice this means the solver looks for a solution with :math:`\chi_\nu^2` close to the level set by ``reg_tweak``.
 
 What ``dn2dem`` Does
 ====================
@@ -44,7 +44,7 @@ The public :func:`demregpy.dn2dem` wrapper is the primary way to interact with `
 3. It chooses a weighting curve from the default self-normalized solve, from EM loci curves, or from a user-supplied weighting curve.
 4. It builds a diagonal constraint matrix from that weighting.
 5. It solves the regularized inverse problem using a GSVD-based formulation.
-6. It increases the chi-squared target if needed until a non-negative solution is found, unless ``non_pos=True``.
+6. It increases the :math:`\chi_\nu^2` target if needed until a non-negative solution is found, unless ``non_pos=True``.
 7. It returns the recovered DEM together with reconstructed data and uncertainty estimates.
 
 The lower-level work is done in :func:`demregpy.demmap.demmap` and :func:`demregpy.demmap.dem_pix`.
@@ -57,15 +57,15 @@ If you do not pass ``dem_norm0``, the default path first computes a rough soluti
 If you pass ``gloci=1`` or a 0/1 mask, the weighting is built from the minimum of the selected EM loci curves.
 If you pass ``dem_norm0``, that shape is used directly.
 
-The standard diagonal constraint scales like ``sqrt(dlogt) / sqrt(weight)``.
+The standard diagonal constraint scales like :math:`\sqrt{\Delta\log T} / \sqrt{w}`.
 If ``emd_int=True``, the solve is carried out in EMD space and ``l_emd=True`` is enabled internally.
-That changes the diagonal constraint to ``1 / weight``.
+That changes the diagonal constraint to :math:`1 / w`.
 
 Positivity
 ==========
 
 The basic inverse problem is linear, but a purely linear solve can return negative DEM values.
-``demregpy`` handles this by repeating the solve with a progressively looser chi-squared target until the solution is non-negative or ``max_iter`` is reached.
+``demregpy`` handles this by repeating the solve with a progressively looser :math:`\chi_\nu^2` target until the solution is non-negative or ``max_iter`` is reached.
 If you set ``non_pos=True``, that positivity-enforcing loop is skipped and the first solution is returned.
 
 What the Returned Quantities Mean
@@ -75,7 +75,7 @@ What the Returned Quantities Mean
 ``dn_reg`` is the data reconstructed from that solution, a direct way to check how well the inversion reproduces the input counts.
 ``edem`` is the vertical uncertainty estimate returned by the regularized inverse.
 ``elogt`` is a temperature-resolution estimate derived from the width of the solver response in temperature space, not an uncertainty on the temperature grid itself.
-``chisq`` is the final reduced chi-squared of the reconstructed data.
+``chisq`` is the final reduced chi-squared, :math:`\chi_\nu^2`, of the reconstructed data.
 
 Relation to Other DEM Methods
 =============================
@@ -88,7 +88,7 @@ Compared to sampling-based approaches such as `demcmc <https://demcmc.readthedoc
 That makes it computationally fast and practical for lines, maps, and time-dependent data where many DEMs need to be recovered in one run.
 
 This speed comes with a different set of assumptions and inputs.
-``demregpy`` requires uncertainties on the input data because the inversion is carried out in a weighted space and the regularization parameter is chosen against a target reduced chi-squared.
+``demregpy`` requires uncertainties on the input data because the inversion is carried out in a weighted space and the regularization parameter is chosen against a target reduced chi-squared, :math:`\chi_\nu^2`.
 In return, the package provides not only a recovered DEM and reconstructed data, but also a vertical uncertainty estimate ``edem`` and a horizontal temperature-resolution estimate ``elogt``.
 
 See Also

@@ -44,12 +44,14 @@ EM Loci Weighting
 =================
 
 A Loci curve for a given filter is useful as an upper bound on the emission measure.
-The curve is EM(T) for each T that would produce the observed data number in that filter if that were the only plasma that was observed.
-Such that,
+The curve is :math:`\mathrm{EM}(T)` for each :math:`T` that would produce the observed data number in that filter if that were the only plasma that was observed.
+That is,
 
-EM(T) = DN / R(T)
+.. math::
 
-where R(T) is the temperature response of the filter.
+   \mathrm{EM}(T) = \frac{\mathrm{DN}}{R(T)}
+
+where :math:`R(T)` is the temperature response of the filter.
 
 This means that the EM loci curve of a filter is the absolute maximum possible EM at each temperature that is consistent with the observed data number in that filter.
 If the EM were above the loci curve then the instrument would have observed a larger data number than it did.
@@ -110,7 +112,7 @@ Use it like this:
 Here the weighting comes directly from the supplied shape.
 Good choices might be a log-normal curve, or a DEM from a previous solve, or a DEM from a different instrument.
 
-You can provide the same weighting curve for every pixel by passing in `dem_norm0` of shape `(nt,)`, or you can provide a different weighting curve for each pixel by passing an array with the same shape as the output DEM (e.g. `(nx,ny,nT)` for a 2-dimensional map).
+You can provide the same weighting curve for every pixel by passing in ``dem_norm0`` of shape ``(nt,)``, or you can provide a different weighting curve for each pixel by passing an array with the same shape as the output DEM, for example ``(nx, ny, nt)`` for a 2D map.
 
 
 Related Options
@@ -127,8 +129,8 @@ It also enables ``l_emd=True`` internally.
 ``l_emd=True``
 --------------
 
-This changes the diagonal constraint from ``sqrt(dlogt) / sqrt(weight)`` to ``1 / weight``.
-That removes the ``sqrt(dlogt)`` factor and applies a stronger penalty to bins with low weighting.
+This changes the diagonal constraint from :math:`\sqrt{\Delta\log T} / \sqrt{w}` to :math:`1 / w`.
+That removes the :math:`\sqrt{\Delta\log T}` factor and applies a stronger penalty to bins with low weighting.
 This form is used automatically when ``emd_int=True``.
 
 ``non_pos=True``

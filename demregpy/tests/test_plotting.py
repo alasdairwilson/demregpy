@@ -23,7 +23,7 @@ def test_plot_dem_sets_labels_and_scale():
     )
 
     assert ax.get_xlabel() == r"$\log_{10} T$"
-    assert ax.get_ylabel() == "DEM"
+    assert ax.get_ylabel() == r"DEM [$\mathrm{cm}^{-5}\,\mathrm{K}^{-1}$]"
     assert ax.get_yscale() == "log"
 
 
