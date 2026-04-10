@@ -60,7 +60,7 @@ At this point you have:
 Recover the DEM
 ===============
 
-The primary way to recover a DEM is via :func:`demregpy.dn2dem`, which uses regularized inversion to solve for the unknown DEM.
+The primary way to recover a DEM is via :func:`demregpy.dn2dem`, which uses regularised inversion to solve for the unknown DEM.
 
 .. code-block:: python
 

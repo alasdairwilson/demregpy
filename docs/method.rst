@@ -1,8 +1,8 @@
-********************
-How the Method Works
-********************
+**********************
+Regularised Inversion
+**********************
 
-``demregpy`` uses deterministic regularized inversion to recover differential emission measures from multi-channel solar data.
+``demregpy`` uses deterministic regularised inversion to recover differential emission measures from multi-channel solar data.
 The method follows the approach described by `Hannah and Kontar (2012) <https://doi.org/10.1051/0004-6361/201117576>`_ and the earlier `demreg implementation in IDL <https://github.com/ianan/demreg>`_.
 
 The Forward Problem
@@ -43,7 +43,7 @@ The public :func:`demregpy.dn2dem` wrapper is the primary way to interact with `
 2. It builds the matrix for either a DEM-space solve or an EMD-space solve.
 3. It chooses a weighting curve from the default self-normalized solve, from EM loci curves, or from a user-supplied weighting curve.
 4. It builds a diagonal constraint matrix from that weighting.
-5. It solves the regularized inverse problem using a GSVD-based formulation.
+5. It solves the regularised inverse problem using a GSVD-based formulation.
 6. It increases the :math:`\chi_\nu^2` target if needed until a non-negative solution is found, unless ``non_pos=True``.
 7. It returns the recovered DEM together with reconstructed data and uncertainty estimates.
 
@@ -73,7 +73,7 @@ What the Returned Quantities Mean
 
 ``dem`` is the recovered DEM or EMD, depending on the solve and return options.
 ``dn_reg`` is the data reconstructed from that solution, a direct way to check how well the inversion reproduces the input counts.
-``edem`` is the vertical uncertainty estimate returned by the regularized inverse.
+``edem`` is the vertical uncertainty estimate returned by the regularised inverse.
 ``elogt`` is a temperature-resolution estimate derived from the width of the solver response in temperature space, not an uncertainty on the temperature grid itself.
 ``chisq`` is the final reduced chi-squared, :math:`\chi_\nu^2`, of the reconstructed data.
 

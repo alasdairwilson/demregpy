@@ -21,14 +21,14 @@ Default: Self-Normalized Weighting
 
 If you do not pass ``dem_norm0``, and if ``gloci`` does not select any filters, :func:`demregpy.dn2dem` uses the default self-normalized weighting.
 
-In this case:
+In this case `demregpy` operates in a two-pass mode where:
 
-1. A first regularized solve is used to estimate a DEM-like shape.
-2. That estimated shape is turned into the weighting used in the main solve.
+1. An initial solve is used to estimate a DEM-like shape.
+2. That estimated shape is turned into the weighting used in a second.
 
-The weighting is estimated from the inversion itself rather than supplied by the caller.
+So the weighting is estimated from the inversion itself rather than supplied by the caller.
 
-Use it like this:
+Use it by simply passing no weighting, like this:
 
 .. code-block:: python
 
@@ -60,7 +60,7 @@ If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves fr
 
 You can also pass a length-``nf`` 0/1 mask to use only selected filters.
 
-Use it like this:
+For example,
 
 .. code-block:: python
 
@@ -73,7 +73,7 @@ Use it like this:
        gloci=1,
    )
 
-or
+or,
 
 .. code-block:: python
 
@@ -91,8 +91,8 @@ Here the weighting has come from the EM loci curves rather than the self-normali
 User-Supplied Weighting
 =======================
 
-If you already have a DEM-shaped weighting curve, you can pass it through ``dem_norm0``.
-Only the relative shape matters, not the absolute scale.
+If you already have a DEM-shaped weighting curve, you can pass it through as the kwarg ``dem_norm0``.
+Only the relative shape of the weighting curve matters, not the absolute scale.
 
 Use it like this:
 

@@ -2,7 +2,7 @@
 demregpy Documentation
 **********************
 
-``demregpy`` is a python package for recovering differential emission measures (DEMs), and their associated errors, from multi-channel solar data using regularized inversion.
+``demregpy`` is a python package for recovering differential emission measures (DEMs), and their associated errors, from multi-channel solar data using regularised inversion.
 It can be used with any instrument that provides data numbers and temperature response matrices.
 ``dn2dem`` supports single spectra, lines, maps, and stacks of maps, with the filter or channel axis last.
 
