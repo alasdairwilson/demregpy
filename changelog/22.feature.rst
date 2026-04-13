@@ -1,0 +1,2 @@
+Added :func:`demregpy.plotting.plot_loci_curves` for plotting filter loci curves on their own or overplotting them on a DEM axis.
+The helper supports bundled AIA responses and synthetic response matrices, and uses the same DEM-space scaling as :func:`demregpy.dn2dem` by default so loci curves can be compared directly with recovered DEMs.

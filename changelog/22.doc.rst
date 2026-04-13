@@ -1,0 +1,1 @@
+Added synthetic and AIA gallery examples showing how to plot loci curves and how to overlay them on recovered DEMs.
