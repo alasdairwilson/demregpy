@@ -13,6 +13,7 @@ from demregpy import dn2dem, load_aia_response
 from demregpy.plotting import plot_dem, plot_loci_curves
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
+
 # %%
 # AIA loci curves are a quick way to see which temperatures are constrained by a
 # given set of channel counts.
@@ -50,6 +51,7 @@ print(f"chi-squared: {chisq:.3f}")
 # The minimum loci curve gives the strongest upper bound from the channel set.
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 4.8))
+xlim = (np.log10(temps[0]), np.log10(temps[-1]))
 
 plot_loci_curves(
     tresp_logt,
@@ -59,6 +61,8 @@ plot_loci_curves(
     ax=axes[0],
 )
 axes[0].set_title("AIA Loci Curves")
+axes[0].set_xlim(*xlim)
+axes[0].set_ylim(1e18, 3e23)
 axes[0].legend(fontsize=8, ncol=2)
 
 plot_dem(
@@ -80,6 +84,8 @@ plot_loci_curves(
     alpha=0.65,
 )
 axes[1].set_title("Recovered DEM with AIA Loci Curves")
+axes[1].set_xlim(*xlim)
+axes[1].set_ylim(1e18, 3e23)
 axes[1].legend(fontsize=8, ncol=2)
 
 fig.tight_layout()
