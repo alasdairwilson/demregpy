@@ -13,7 +13,6 @@ from demregpy import dn2dem, load_aia_response
 from demregpy.plotting import plot_dem, plot_loci_curves
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
-
 # %%
 # AIA loci curves are a quick way to see which temperatures are constrained by a
 # given set of channel counts.
