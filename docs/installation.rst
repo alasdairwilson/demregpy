@@ -13,7 +13,7 @@ For the core package:
 
    pip install demregpy
 
-This installs the main inversion code together with the core dependencies.
+This installs `demregpy` along with the core dependencies.
 After installation, :func:`demregpy.dn2dem` is the main entry point for converting data numbers to differential emission measures.
 
 Install with AIA Support

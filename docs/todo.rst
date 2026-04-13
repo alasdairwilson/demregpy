@@ -2,7 +2,7 @@
 To Do
 *****
 
-This page keeps short notes on follow-up work that would be useful for the docs and public API.
+Stuff I haven't gotten around to.
 
 Plotting
 ========

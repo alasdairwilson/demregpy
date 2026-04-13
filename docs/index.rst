@@ -6,6 +6,9 @@ demregpy Documentation
 It can be used with any instrument that provides data numbers and temperature response matrices.
 ``dn2dem`` supports single spectra, lines, maps, and stacks of maps, with the filter or channel axis last.
 
+``demregpy`` 1.0 is out.
+See :doc:`whatsnew/index` to see what changed.
+
 .. toctree::
    :hidden:
    :maxdepth: 2

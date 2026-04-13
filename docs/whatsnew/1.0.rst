@@ -20,6 +20,24 @@ Typical runs are around 4 to 7 times faster than before, depending on the input 
 This makes the package much more practical for larger maps, DEMograms, and other workflows where many inversions are performed simultaneously.
 I get ~100k DEMs per second on my home desktop.
 
+Dependency Updates
+==================
+
+The package requirements have been updated for the 1.0 release.
+``demregpy`` now targets Python 3.12 and newer, uses NumPy 2 or newer, and treats Matplotlib as a core dependency rather than an optional extra.
+
+Solver and API Improvements
+===========================
+
+The main inversion interface, :func:`demregpy.dn2dem`, now accepts inputs with up to three leading axes and the channel axis last, so stacks such as ``(ntime, nx, ny, nf)`` can be inverted directly.
+The weighting inputs are also more flexible, including support for per-filter ``gloci`` masks and broadcasting a single ``dem_norm0`` curve across larger input arrays.
+
+Input validation is stricter than in earlier releases.
+Shape mismatches, invalid weighting inputs, and malformed response matrices now raise explicit errors rather than failing later in the solve.
+
+Version 1.0 also adds small public helper APIs for common tasks.
+These include :func:`demregpy.load_aia_response` for bundled AIA response files, :func:`demregpy.plotting.plot_dem` for plotting one-dimensional DEM curves, and :func:`demregpy.synthetic.synthesize_counts` for generating synthetic observations from response matrices.
+
 Documentation and Examples
 ==========================
 

@@ -1,0 +1,2 @@
+Reworked the documentation and example gallery around smaller, focused examples instead of a few monolithic scripts.
+The updated docs now cover installation, a ``dn2dem`` tutorial, topic guides, AIA response tooling, synthetic-count generation, and a wider range of runnable gallery examples.
