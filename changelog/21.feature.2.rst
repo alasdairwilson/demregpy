@@ -1,0 +1,1 @@
+Added small public helper APIs for common workflows, including :func:`demregpy.load_aia_response` for bundled AIA response files, :func:`demregpy.plotting.plot_dem` for one-dimensional DEM plots, and :func:`demregpy.synthetic.synthesize_counts` for generating synthetic observations from response matrices.

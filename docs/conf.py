@@ -5,7 +5,6 @@
 # http://www.sphinx-doc.org/en/master/config
 
 import datetime
-from pathlib import Path
 
 from packaging.version import Version
 from sunpy_sphinx_theme import PNG_ICON
@@ -50,6 +49,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx_automodapi.automodapi",
     "sphinx_automodapi.smart_resolver",
+    "sphinx_design",
     "sphinx_changelog",
     "sphinx_gallery.gen_gallery",
 ]
@@ -97,7 +97,7 @@ graphviz_dot_args = [
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ["_static"]
+html_static_path = ["_static"]
 
 # By default, when rendering docstrings for classes, sphinx.ext.autodoc will
 # make docs with the class-level docstring and the class-method docstrings,
@@ -110,18 +110,18 @@ autoclass_content = "both"
 
 # -- Sphinx Gallery ------------------------------------------------------------
 sphinx_gallery_conf = {
-    'backreferences_dir': Path('generated') / 'modules',
-    'filename_pattern': '^((?!skip_).)*$',
-    'examples_dirs': Path('..') / 'examples',
+    'backreferences_dir': 'generated/modules',
+    'filename_pattern': r'/plot_.*\.py$',
+    'examples_dirs': '../examples',
     'within_subsection_order': "ExampleTitleSortKey",
-    'gallery_dirs': Path('generated') / 'gallery',
+    'gallery_dirs': 'generated/gallery',
     'matplotlib_animations': True,
     # Comes from the theme.
-    "default_thumb_file": PNG_ICON,
+    "default_thumb_file": str(PNG_ICON),
     'abort_on_example_error': False,
-    'plot_gallery': 'True',
+    'plot_gallery': True,
     'remove_config_comments': True,
-    'doc_module': ('sunpy'),
+    'doc_module': ('demregpy', 'sunpy'),
     'only_warn_on_example_error': True,
 }
 

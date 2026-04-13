@@ -1,0 +1,47 @@
+.. _whatsnew-1-0:
+
+***********
+Version 1.0
+***********
+
+The 1.0 ``demregpy`` release focuses on performance and documentation.
+The solver is substantially faster, and the documentation has been reorganized around smaller examples that cover a more extensive range of the API.
+
+Performance
+===========
+
+Version 1.0 includes substantial speedups in the inversion pipeline.
+Typical runs are around 4 to 7 times faster than before, depending on the input shape and solve settings.
+
+.. image:: /_static/speedups_in_1_0.png
+   :alt: Benchmark figure showing the speedups included in demregpy 1.0.
+   :width: 100%
+
+This makes the package much more practical for larger maps, DEMograms, and other workflows where many inversions are performed simultaneously.
+I get ~100k DEMs per second on my home desktop.
+
+Dependency Updates
+==================
+
+The package requirements have been updated for the 1.0 release.
+``demregpy`` now targets Python 3.12 and newer, uses NumPy 2 or newer, and treats Matplotlib as a core dependency rather than an optional extra.
+
+Solver and API Improvements
+===========================
+
+The main inversion interface, :func:`demregpy.dn2dem`, now accepts inputs with up to three leading axes and the channel axis last, so stacks such as ``(ntime, nx, ny, nf)`` can be inverted directly.
+The weighting inputs are also more flexible, including support for per-filter ``gloci`` masks and broadcasting a single ``dem_norm0`` curve across larger input arrays.
+
+Input validation is stricter than in earlier releases.
+Shape mismatches, invalid weighting inputs, and malformed response matrices now raise explicit errors rather than failing later in the solve.
+
+Version 1.0 also adds small public helper APIs for common tasks.
+These include :func:`demregpy.load_aia_response` for bundled AIA response files, :func:`demregpy.plotting.plot_dem` for plotting one-dimensional DEM curves, and :func:`demregpy.synthetic.synthesize_counts` for generating synthetic observations from response matrices.
+
+Documentation and Examples
+==========================
+
+The documentation has also been reworked around smaller gallery examples instead of a few monolithic scripts.
+The examples now separate the smallest working components of the package, such as plotting a DEM curve, plotting AIA temperature responses, generating synthetic counts from a response matrix, and running full inversions on synthetic or AIA data.
+
+This makes it easier to find a minimal starting point and then build up to more realistic workflows.

@@ -1,6 +1,4 @@
-"""
-Turn Solar data and temperature responses into DEM(T)
-"""
+"""Top-level DEM inversion interface."""
 
 import numpy as np
 
@@ -10,30 +8,49 @@ __all__ = [
     'dn2dem',
 ]
 
+
+def _normalize_gloci(gloci, nf):
+    """Normalize the public ``gloci`` input to a per-filter 0/1 mask."""
+    gloci_arr = np.asarray(gloci)
+    if gloci_arr.ndim == 0:
+        if gloci_arr == 0:
+            return np.zeros(nf, dtype=int)
+        if gloci_arr == 1:
+            return np.ones(nf, dtype=int)
+        raise ValueError("gloci scalar must be 0 or 1")
+
+    if gloci_arr.shape != (nf,):
+        raise ValueError(f"gloci array must have shape ({nf},)")
+    if not np.all(np.isfinite(gloci_arr)):
+        raise ValueError("gloci array must contain only finite values")
+    if not np.all((gloci_arr == 0) | (gloci_arr == 1)):
+        raise ValueError("gloci array must contain only 0/1 values")
+    return gloci_arr.astype(int)
+
+
 def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, gloci=0,
            rgt_fact=1.5, dem_norm0=None, nmu=40, warn=False, emd_int=False, emd_ret=False, l_emd=False, non_pos=False):
     """
-    Perform a Regularization on solar data, returning the Differential Emission Measure (DEM).
+    Recover a differential emission measure from channel counts.
 
-    Basically, calculates DEM(T) in the equation: g(f)=K(f,T)#DEM(T) using the method
-    of Hannah & Kontar A&A 553 2013.
+    This is the main public wrapper around the lower-level regularised
+    inversion routines. It accepts arrays whose last axis is
+    filter/channel, with up to three leading spatial or temporal axes.
 
     Parameters
     ----------
     dn_in : array_like
-        The dn counts in dn/px/s for each filter is shape nx*ny*nf (nf=number of filters
-        nx,ny = spatial dimensions, one or both of which can be size 0 for 0d/1d problems.
-        (or nt,nf or nx,nt,nf etc etc to get time series)
+        Input channel counts. The last axis must be filter/channel, so valid
+        shapes include ``(nf,)``, ``(n, nf)``, ``(nx, ny, nf)``, and
+        ``(n0, n1, n2, nf)``.
     edn_in : array_like
-        The error on the dn values in the same units and same dimensions.
+        Uncertainties on ``dn_in`` with the same shape and units.
     tresp : array_like
-        The temperature response matrix size n_tresp by nf
+        Temperature response matrix with shape ``(nt_resp, nf)``.
     tresp_logt : array_like
-        The temperatures in log t which the temperature response matrix corresponds to.
-        E.G if your tresp matrix runs from 5.0 to 8.0 in steps of 0.05 then this is
-        the input to tresp_logt
+        Log10 temperature grid for the first axis of ``tresp``.
     temps : array_like
-        The temperatures at which to calculate a DEM, array of length nt.
+        Temperature-bin edges at which to recover the DEM.
     reg_tweak : float, optional
         The initial normalised chisq target. Default is 1.0.
     max_iter : int, optional
@@ -41,21 +58,20 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         If max iter is reached before a suitable solution is found then the current solution is
         returned instead (which may contain negative values).
         Default is only 10 - although non_pos=True will set as 1.
-    gloci : int, optional
-        If no dem_norm0 given (or dem_norm0 array of 1s) then set gloci 1 or 0 (default 0) to choose weighting for the
-        inversion process (L constraint matrix).
-        1: uses the min of EM loci curves to weight L.
-        0: uses two reg runs - first with L=diag(1/dT) and DEM result from this used to weight L for second run.
+    gloci : int or array_like, optional
+        Weighting mode used when ``dem_norm0`` is not supplied. A scalar ``0``
+        uses the self-normalised weighting scheme, a scalar ``1`` uses all EM
+        loci curves, and a length-``nf`` 0/1 mask selects which filters
+        contribute to the EM loci weighting.
         Default is 0.
     rgt_fact : float, optional
         The factor by which rgt_tweak increases each iteration.
         As the target chisq increases there is more flexibility allowed on the DEM.
         Default is 1.5.
     dem_norm0 : array_like, optional
-        This is an array of length nt which contains an initial guess of the DEM solution providing a weighting
-        for the inversion process (L constraint matrix). The actual values of the normalisation
-        do not matter, only their relative values.
-        If no dem_norm0 given then L weighting based on value of gloci (0 is default).
+        Initial DEM-shaped weighting for the constraint matrix. Only the
+        relative values matter. If omitted, the weighting is determined from
+        ``gloci``.
         Default is None.
     nmu : int, optional
         Number of reg param samples to calculate (default (or <=40) 500 for 0D, 42 for map).
@@ -64,36 +80,48 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         Print out any warnings (always warn for 1D, default no for higher dim data).
         Default is False.
     emd_int : bool, optional
-        Do the regularization in EMD [cm^-5] instead of DEM [cm^-5 K^-1] space? (default False).
-        In some circumstances this does seem to help (particularly at higher T), but needs
-        additional tweaking, so why it is not the default.
+        Perform the inversion in emission measure distribution space rather
+        than DEM space.
         Default is False.
     emd_ret : bool, optional
-        Return EMD solution instead of EMD [cm^-5] instead of DEM [cm^-5 K^-1] (default False).
+        Return the result in EMD units instead of DEM units.
         Default is False.
     l_emd : bool, optional
-        Remove sqrt factor in constraint matrix, provides better solutions with EMD (and if higher T issues?)
-        (default False, but True with emd_int=True).
+        Remove the square-root factor in the constraint matrix. This is mainly
+        useful with ``emd_int=True``.
         Default is False.
     non_pos : bool, optional
-        Return the first solution irrespective of it being positive or not (default False).
-        Done by setting max_iter=1, so user max_iter value ignored.
+        Return the first solution even if it contains negative values. This is
+        implemented by forcing ``max_iter=1``.
         Default is False.
 
     Returns
     -------
     dem : ndarray
-        The DEM, has shape nx*ny*nt and units out depends on the input units of tresp and setting of emd_ret
+        Recovered DEM or EMD. The output shape matches the input shape with the
+        filter axis replaced by temperature bin.
     edem : ndarray
-        Vertical errors on the DEM, same units as DEM.
+        Vertical uncertainties on ``dem``.
     elogt : ndarray
-        Horizontal errors on temperature, as the name suggests in logT.
+        Horizontal temperature resolution estimates in log10(T).
     chisq : ndarray
-        The final chisq, shape nx*ny. Pixels which have undergone more iterations will in general have higher chisq.
+        Final reduced chi-squared values.
     dn_reg : ndarray
-        The simulated dn counts, shape nx*ny*nf. This is obtained by multiplying the DEM(T) by the filter
-        response K(f,T) for each channel, very important for comparing with the initial data.
+        Counts reconstructed from the recovered solution, with the same shape as
+        ``dn_in``.
     """
+    dn_in = np.asarray(dn_in)
+    edn_in = np.asarray(edn_in)
+
+    if dn_in.ndim == 0:
+        raise ValueError("dn_in must have at least one dimension")
+    if dn_in.ndim > 4:
+        raise ValueError(
+            "dn_in must have shape (nf,), (n, nf), (nx, ny, nf), or (n0, n1, n2, nf)"
+        )
+    if edn_in.shape != dn_in.shape:
+        raise ValueError("edn_in must have the same shape as dn_in")
+
     if len(temps) < 4:
         raise ValueError("temps must define at least 3 DEM bins")
 
@@ -113,59 +141,29 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     dlogt = (np.log10(temps[1:])-np.log10(temps[:-1]))
     nt = len(dlogt)
     logt = (np.array([np.log10(temps[0])+(dlogt[i]*(float(i)+0.5)) for i in np.arange(nt)]))
-    # number of DEM entries
 
-    # hopefully we can deal with a variety of data, nx,ny,nf
-    sze = dn_in.shape
+    leading_shape = dn_in.shape[:-1]
+    nf = dn_in.shape[-1]
+    nobs = int(np.prod(leading_shape)) if leading_shape else 1
 
-    # for a single pixel
     dem0 = None
-    # for a single pixel
-    if len(sze) == 1:
-        nx = 1
-        ny = 1
-        nf = sze[0]
-        dn = np.zeros([1, 1, nf])
-        dn[0, 0, :] = dn_in
-        edn = np.zeros([1, 1, nf])
-        edn[0, 0, :] = edn_in
-        if dem_norm0 is not None:
-            dem0 = np.zeros([1, 1, nt])
-            dem0[0, 0, :] = dem_norm0
+    if dem_norm0 is not None:
+        expected_dem_shape = (*leading_shape, nt)
+        if dem_norm0.shape == (nt,):
+            dem0 = np.broadcast_to(dem_norm0, expected_dem_shape)
+        elif dem_norm0.shape == expected_dem_shape:
+            dem0 = dem_norm0
+        else:
+            raise ValueError(f"dem_norm0 must have shape {expected_dem_shape} or {(nt,)}")
+        dem0 = np.reshape(dem0, (nobs, nt))
+
+    if dn_in.ndim == 1:
         if warn is False:
             warn = True
         if nmu <= 40:
             nmu = 500
-
-    # for a row of pixels
-    if len(sze) == 2:
-        nx = sze[0]
-        ny = 1
-        nf = sze[1]
-        dn = np.zeros([nx, 1, nf])
-        dn[:, 0, :] = dn_in
-        edn = np.zeros([nx, 1, nf])
-        edn[:, 0, :] = edn_in
-        if dem_norm0 is not None:
-            dem0 = np.zeros([nx, 1, nt])
-            dem0[:, 0, :] = dem_norm0
-        if nmu <= 40:
-            nmu = 42
-
-    # for 2d image
-    if len(sze) == 3:
-        nx = sze[0]
-        ny = sze[1]
-        nf = sze[2]
-        dn = np.zeros([nx, ny, nf])
-        dn[:, :, :] = dn_in
-        edn = np.zeros([nx, ny, nf])
-        edn[:, :, :] = edn_in
-        if dem_norm0 is not None:
-            dem0 = np.zeros([nx, ny, nt])
-            dem0[:, :, :] = dem_norm0
-        if nmu <= 40:
-            nmu = 42
+    elif nmu <= 40:
+        nmu = 42
     # If want to ignore positivity constraint then set max_iter=1 and no need for the warnings
     if non_pos:
         max_iter = 1
@@ -175,16 +173,9 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     if (warn and (rgt_fact <= 1)):
         print('Warning, rgt_fact should be > 1, for postivity loop to iterate properly.')
 
-    # Set glc to either none or all, based on gloci input (default none/not using)
-    # IDL version of code allows selective use of gloci, i.e [1,1,0,0,1,1] to chose 4 of 6 filters for EM loci
-    # dem_pix() in demmap_pos.py does allow this, but not sure will work through these wrapper functions
-    # also not sure if this functionality is actually needed, just stick with all filter or none?
-    if gloci == 1:
-        glc = np.ones(nf)
-        glc.astype(int)
-    else:
-        glc = np.zeros(nf)
-        glc.astype(int)
+    # gloci can be 0/1 for all filters, or a per-filter 0/1 mask selecting
+    # which filters contribute to the EM loci weighting.
+    glc = _normalize_gloci(gloci, nf)
 
     if len(tresp[0, :]) != nf:
         raise ValueError("tresp must have the same number of filters as the data")
@@ -222,37 +213,34 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
     sclf = 1E15
     rmatrix = rmatrix*sclf
 
-    dn1d = np.reshape(dn, [nx*ny, nf])
-    edn1d = np.reshape(edn, [nx*ny, nf])
+    dn1d = np.reshape(dn_in, (nobs, nf))
+    edn1d = np.reshape(edn_in, (nobs, nf))
     # create our 1d arrays for output
-    dem1d = np.zeros([nx*ny, nt])
-    chisq1d = np.zeros([nx*ny])
-    edem1d = np.zeros([nx*ny, nt])
-    elogt1d = np.zeros([nx*ny, nt])
-    dn_reg1d = np.zeros([nx*ny, nf])
+    dem1d = np.zeros([nobs, nt])
+    chisq1d = np.zeros([nobs])
+    edem1d = np.zeros([nobs, nt])
+    elogt1d = np.zeros([nobs, nt])
+    dn_reg1d = np.zeros([nobs, nf])
 
     # *****************************************************
     #  Actually doing the DEM calculations
     # *****************************************************
-    # Should always be just running the first part of if here as setting dem01d to array of 1s if nothing given
-    # So now more a check dimensions of things are correct
-    if dem0 is not None and (dem0.ndim == dn.ndim):
-        dem01d = np.reshape(dem0, [nx*ny, nt])
+    if dem0 is not None:
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt, dlogt, glc,
                    reg_tweak=reg_tweak, max_iter=max_iter,
-                   rgt_fact=rgt_fact, dem_norm0=dem01d, nmu=nmu, warn=warn, l_emd=l_emd)
+                   rgt_fact=rgt_fact, dem_norm0=dem0, nmu=nmu, warn=warn, l_emd=l_emd)
     else:
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt,
                    dlogt, glc, reg_tweak=reg_tweak, max_iter=max_iter,
                    rgt_fact=rgt_fact, dem_norm0=None, nmu=nmu, warn=warn, l_emd=l_emd)
-    # reshape the 1d arrays to original dimensions and squeeze extra dimensions
-    dem = ((np.reshape(dem1d, [nx, ny, nt]))*sclf).squeeze()
-    edem = ((np.reshape(edem1d, [nx, ny, nt]))*sclf).squeeze()
-    elogt = (np.reshape(elogt1d, [nx, ny, nt])/(2.0*np.sqrt(2.*np.log(2.)))).squeeze()
-    chisq = (np.reshape(chisq1d, [nx, ny])).squeeze()
-    dn_reg = (np.reshape(dn_reg1d, [nx, ny, nf])).squeeze()
+
+    dem = np.reshape(dem1d, (*leading_shape, nt))*sclf
+    edem = np.reshape(edem1d, (*leading_shape, nt))*sclf
+    elogt = np.reshape(elogt1d, (*leading_shape, nt)) / (2.0*np.sqrt(2.*np.log(2.)))
+    chisq = chisq1d[0] if not leading_shape else np.reshape(chisq1d, leading_shape)
+    dn_reg = np.reshape(dn_reg1d, (*leading_shape, nf))
 
     # There's probably a neater way of doing this (and maybe provide info of what was done as well?)
     # but fine for now as it works
