@@ -1,2 +1,0 @@
-Extended :func:`demregpy.dn2dem` to accept channel-last inputs with up to three leading axes, including stacks such as ``(ntime, nx, ny, nf)``.
-The weighting inputs are also more flexible, including support for per-filter ``gloci`` masks and broadcasting a single ``dem_norm0`` curve across larger inputs, and invalid shapes or response matrices now raise explicit errors earlier in the solve.

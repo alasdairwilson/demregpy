@@ -1,8 +1,8 @@
-*****
-To Do
-*****
+*******
+Roadmap
+*******
 
-Stuff I haven't gotten around to.
+Planned improvements for future releases.
 
 Plotting
 ========

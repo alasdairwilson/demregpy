@@ -1,1 +1,0 @@
-Improved inversion performance substantially, with typical speedups of around 4 to 7 times depending on the input shape and solver settings.

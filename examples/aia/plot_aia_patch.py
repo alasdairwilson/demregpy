@@ -4,8 +4,6 @@ AIA Patch Inversion
 ===================
 
 Run ``dn2dem`` on a small AIA patch and inspect the resulting DEM cube.
-The useful pattern here is that once the AIA count rates and uncertainties have been stacked into an array with channels on the last axis, the same public ``dn2dem`` call can be used to recover a DEM at every pixel in the patch.
-That same pattern carries over to larger cutouts and to time-dependent image stacks.
 """
 
 import matplotlib.pyplot as plt
@@ -15,11 +13,9 @@ from demregpy import dn2dem, load_aia_response
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # %%
-# Start by extracting a submap from each AIA channel.
-# The patch is kept small so the example stays quick, but any sized region can be used.
-# The map values are converted to count rates by dividing by exposure time before stacking them, our final array has shape ``(nx, ny, nf)``, which is the natural map-like input form for ``dn2dem``.
-# This compact example does not apply an additional time-dependent degradation correction.
-# We load the aia response file using `load_aia_response`.
+# Extract a submap from each AIA channel and convert to count rates.
+# The final array has shape ``(nx, ny, nf)`` with channels on the last axis.
+# No additional time-dependent degradation correction is applied here.
 
 maps = load_aia_full_disk_maps()
 rate_maps = [amap / amap.exposure_time for amap in maps]
@@ -46,9 +42,8 @@ temps = 10 ** np.linspace(5.6, 7.4, num=21)
 mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 
 # %%
-# The inversion call is the same regardless of whether the input describes one spectrum or an n-dimensional grid of data.
-# ``dn2dem`` solves each pixel independently and returns arrays with the same spatial axes, with temperature replacing channel on the DEM outputs.
-# Here the average DEM over the patch is used to pick one representative temperature bin to display.
+# The ``dn2dem`` call is identical for a single spectrum or an n-dimensional grid.
+# Each pixel is solved independently; output spatial axes match the input, with temperature replacing channel.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
@@ -61,8 +56,7 @@ dem, edem, elogt, chisq, dn_reg = dn2dem(
 )
 
 # %%
-# One useful first view is a temperature slice near the part of the solution where the patch is brightest on average.
-# Plotting that slice alongside one input channel and the per-pixel chi-squared map helps separate thermal structure from places where the fit is poor and the inputs or uncertainties may need more attention.
+# A temperature slice near the peak of the patch-averaged DEM, alongside one input channel and per-pixel chi-squared.
 
 fig, axes = plt.subplots(1, 3, figsize=(13, 4.5))
 

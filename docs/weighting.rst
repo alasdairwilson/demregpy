@@ -2,31 +2,13 @@
 Weighting Schemes
 *****************
 
-``dn2dem`` supports three main weighting schemes, along with a few related options that change how the inversion is carried out.
-
-See :doc:`api` for the full function signatures and the :doc:`generated/gallery/index` for example scripts.
-See :doc:`method` for a broader description of the inversion itself.
-
-Overview
-========
-
-The main weighting-related arguments in :func:`demregpy.dn2dem` are:
-
-- ``gloci``: choose between the default self-normalized weighting and EM loci weighting, either for all filters or for a selected subset.
-- ``dem_norm0``: supply your own weighting curve directly.
-- ``emd_int`` and ``l_emd``: related options that change how the constraint is applied.
+:func:`demregpy.dn2dem` supports three weighting modes via ``gloci``, ``dem_norm0``, and the default self-normalized path.
+See :doc:`method` for the inversion itself and :doc:`api` for full signatures.
 
 Default: Self-Normalized Weighting
 ==================================
 
-If you do not pass ``dem_norm0``, and if ``gloci`` does not select any filters, :func:`demregpy.dn2dem` uses the default self-normalized weighting.
-
-In this case `demregpy` operates in a two-pass mode where:
-
-1. An initial solve is used to estimate a DEM-like shape.
-2. That estimated shape is turned into the weighting used in a second.
-
-So the weighting is estimated from the inversion itself rather than supplied by the caller.
+When neither ``dem_norm0`` nor ``gloci`` is specified, ``dn2dem`` runs a two-pass solve: the first pass estimates a DEM shape which is then used as the constraint weighting for the second pass.
 
 Use it by simply passing no weighting, like this:
 
@@ -43,22 +25,16 @@ Use it by simply passing no weighting, like this:
 EM Loci Weighting
 =================
 
-A Loci curve for a given filter is useful as an upper bound on the emission measure.
-The curve is :math:`\mathrm{EM}(T)` for each :math:`T` that would produce the observed data number in that filter if that were the only plasma that was observed.
-That is,
+A loci curve for a given filter is the maximum emission measure at each temperature consistent with the observed count in that filter:
 
 .. math::
 
    \mathrm{EM}(T) = \frac{\mathrm{DN}}{R(T)}
 
-where :math:`R(T)` is the temperature response of the filter.
+where :math:`R(T)` is the filter response.
+The minimum envelope across all channels gives the tightest upper bound on the DEM from the data alone.
 
-This means that the EM loci curve of a filter is the absolute maximum possible EM at each temperature that is consistent with the observed data number in that filter.
-If the EM were above the loci curve then the instrument would have observed a larger data number than it did.
-
-If you pass ``gloci=1``, the inversion uses the minimum of the EM loci curves from all filters to build the weighting.
-
-You can also pass a length-``nf`` 0/1 mask to use only selected filters.
+If you pass ``gloci=1``, the inversion uses this minimum envelope as the weighting.
 
 For example,
 
@@ -86,13 +62,13 @@ or,
        gloci=[1, 1, 0, 0, 1, 1],
    )
 
-Here the weighting has come from the EM loci curves rather than the self-normalized first pass.
+Here the weighting comes from selected EM loci curves.
 
 User-Supplied Weighting
 =======================
 
-If you already have a DEM-shaped weighting curve, you can pass it through as the kwarg ``dem_norm0``.
-Only the relative shape of the weighting curve matters, not the absolute scale.
+Pass a DEM-shaped weighting curve via ``dem_norm0``.
+Only the relative shape matters, not the absolute scale.
 
 Use it like this:
 
@@ -109,10 +85,10 @@ Use it like this:
        dem_norm0=dem_weight,
    )
 
-Here the weighting comes directly from the supplied shape.
-Good choices might be a log-normal curve, or a DEM from a previous solve, or a DEM from a different instrument.
+Here the weighting comes from the supplied shape.
+A log-normal curve, a DEM from a previous solve, or a DEM from a different instrument are all reasonable choices.
 
-You can provide the same weighting curve for every pixel by passing in ``dem_norm0`` of shape ``(nt,)``, or you can provide a different weighting curve for each pixel by passing an array with the same shape as the output DEM, for example ``(nx, ny, nt)`` for a 2D map.
+A scalar ``(nt,)`` array broadcasts across all pixels; alternatively, pass an array matching the output DEM shape (e.g. ``(nx, ny, nt)``) for per-pixel weighting.
 
 
 Related Options
