@@ -1,2 +1,0 @@
-Updated the minimum supported dependencies for ``demregpy`` 1.0.
-``demregpy`` now targets Python 3.12 and newer, uses NumPy 2 or newer, and adds matplotlib as a core dependency.
