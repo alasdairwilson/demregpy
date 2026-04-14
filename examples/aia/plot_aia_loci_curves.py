@@ -3,7 +3,11 @@
 Plot AIA Loci Curves
 ====================
 
-Plot AIA loci curves for one pixel and overlay them on a recovered DEM.
+Loci curves show the maximum DEM consistent with a single channel's count rate
+at each temperature.  The minimum envelope across all channels gives the
+tightest upper bound on the DEM from the data alone, without any regularisation.
+Overlaying these curves on a recovered DEM is a quick sanity check: a good
+solution should sit at or below the loci envelope everywhere.
 """
 
 import matplotlib.pyplot as plt
