@@ -1,7 +1,6 @@
 """Correctness tests for :func:`demmap` and :func:`dem_unwrap` with small synthetic stacks."""
 
 import numpy as np
-import pytest
 
 from demregpy.demmap import dem_unwrap, demmap
 
@@ -15,7 +14,6 @@ def _make_stack(nobs=5):
     """
     # Temperature grid — 7 bins, 8 edges
     logtemps = np.linspace(5.7, 6.3, 8)
-    temps = 10**logtemps
     dlogt = np.diff(logtemps)
     nt = len(dlogt)
     logt = logtemps[:-1] + 0.5 * dlogt
@@ -82,7 +80,7 @@ class TestDemmapCorrectness:
 
     def test_reconstruction_quality(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=5)
-        dem, edem, elogt, chisq, dn_reg = demmap(
+        _dem, _edem, _elogt, _chisq, dn_reg = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
         )
         ratio = dn_reg / dn_in
@@ -106,7 +104,7 @@ class TestDemmapCorrectness:
 
     def test_single_observation(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=1)
-        dem, edem, elogt, chisq, dn_reg = demmap(
+        dem, _edem, _elogt, chisq, _dn_reg = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
         )
         assert dem.shape == (1, logt.shape[0])
@@ -119,10 +117,10 @@ class TestDemUnwrapCorrectness:
 
     def test_matches_demmap(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=3)
-        kwargs = dict(
-            reg_tweak=1.0, max_iter=10, rgt_fact=1.5,
-            dem_norm0=None, nmu=42, warn=False, l_emd=False,
-        )
+        kwargs = {
+            "reg_tweak": 1.0, "max_iter": 10, "rgt_fact": 1.5,
+            "dem_norm0": None, "nmu": 42, "warn": False, "l_emd": False,
+        }
         dem_m, edem_m, elogt_m, chisq_m, dnreg_m = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc, **kwargs,
         )
@@ -137,7 +135,7 @@ class TestDemUnwrapCorrectness:
 
     def test_output_shapes(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=4)
-        dem, edem, elogt, chisq, dn_reg = dem_unwrap(
+        dem, _edem, _elogt, chisq, dn_reg = dem_unwrap(
             dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
         )
         nobs, nf = dn_in.shape
@@ -162,7 +160,7 @@ class TestDemmapWithGloci:
     def test_gloci_all_filters(self):
         dn_in, edn, rmatrix, logt, dlogt, _, _ = _make_stack(nobs=3)
         glc = np.ones(dn_in.shape[1], dtype=int)
-        dem, edem, elogt, chisq, dn_reg = demmap(
+        dem, _edem, _elogt, chisq, _dn_reg = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
         )
         assert np.all(np.isfinite(dem))
@@ -173,7 +171,7 @@ class TestDemmapWithGloci:
         nf = dn_in.shape[1]
         glc = np.zeros(nf, dtype=int)
         glc[:3] = 1  # use only first 3 filters for EM loci
-        dem, edem, elogt, chisq, dn_reg = demmap(
+        dem, _edem, _elogt, chisq, _dn_reg = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
         )
         assert np.all(np.isfinite(dem))
@@ -189,7 +187,7 @@ class TestDemmapWithDemNorm0:
         nt = logt.shape[0]
         # Use the true DEM shape as the initial guess
         dem_norm0 = dem_models / dem_models.max(axis=1, keepdims=True)
-        dem, edem, elogt, chisq, dn_reg = demmap(
+        dem, _edem, _elogt, _chisq, dn_reg = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc,
             dem_norm0=dem_norm0, nmu=42, warn=False,
         )
