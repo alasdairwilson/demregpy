@@ -18,34 +18,28 @@ The data in one channel can be written as an integral of the DEM against that ch
 Here :math:`g_i` is the observed count or intensity in channel :math:`i`, :math:`K_i(T)` is the temperature response, and :math:`\xi(T)` is the DEM.
 After choosing a temperature grid, the problem becomes a matrix equation of the form :math:`g = K\xi`.
 
-Why the Inversion Is Hard
-=========================
+Ill-Posedness
+=============
 
-This inverse problem is ill-posed.
-There are usually only a small number of channels, the temperature responses are broad, and the data contain noise.
-A naive inverse can fit the data while producing an unstable or highly oscillatory DEM.
+The inverse problem is ill-posed: few channels, broad responses, and noise mean that a naive inverse produces unstable or oscillatory solutions.
 
-What Regularization Does
-========================
+Regularization
+==============
 
-Regularization adds a constraint that prefers smooth and stable solutions over noisy ones.
-In ``demregpy``, the solution is found by balancing agreement with the observed data within their uncertainties against a weighted constraint on the DEM shape.
+Regularization balances data fidelity against a weighted smoothness constraint on the DEM.
+The regularization parameter is chosen from a grid of trial values to achieve a target :math:`\chi_\nu^2`, set by ``reg_tweak``.
 
-The regularization parameter is chosen from a grid of trial values so that the solution is close to the requested target reduced chi-squared, :math:`\chi_\nu^2`.
-In practice this means the solver looks for a solution with :math:`\chi_\nu^2` close to the level set by ``reg_tweak``.
+Algorithm
+=========
 
-What ``dn2dem`` Does
-====================
+:func:`demregpy.dn2dem` carries out the following steps:
 
-The public :func:`demregpy.dn2dem` wrapper is the primary way to interact with ``demregpy`` and carries out the following steps.
-
-1. It interpolates the response matrix onto the requested temperature grid.
-2. It builds the matrix for either a DEM-space solve or an EMD-space solve.
-3. It chooses a weighting curve from the default self-normalized solve, from EM loci curves, or from a user-supplied weighting curve.
-4. It builds a diagonal constraint matrix from that weighting.
-5. It solves the regularised inverse problem using a GSVD-based formulation.
-6. It increases the :math:`\chi_\nu^2` target if needed until a non-negative solution is found, unless ``non_pos=True``.
-7. It returns the recovered DEM together with reconstructed data and uncertainty estimates.
+1. Interpolate the response matrix onto the requested temperature grid.
+2. Build the forward operator in DEM or EMD space.
+3. Construct a diagonal constraint matrix from the chosen weighting (self-normalized, EM loci, or user-supplied).
+4. Solve the regularised inverse via GSVD.
+5. If needed, increase the :math:`\chi_\nu^2` target and re-solve until the DEM is non-negative (unless ``non_pos=True``).
+6. Return the DEM, uncertainties, and reconstructed counts.
 
 The lower-level work is done in :func:`demregpy.demmap.demmap` and :func:`demregpy.demmap.dem_pix`.
 
@@ -68,8 +62,8 @@ The basic inverse problem is linear, but a purely linear solve can return negati
 ``demregpy`` handles this by repeating the solve with a progressively looser :math:`\chi_\nu^2` target until the solution is non-negative or ``max_iter`` is reached.
 If you set ``non_pos=True``, that positivity-enforcing loop is skipped and the first solution is returned.
 
-What the Returned Quantities Mean
-=================================
+Returned Quantities
+===================
 
 ``dem`` is the recovered DEM or EMD, depending on the solve and return options.
 ``dn_reg`` is the data reconstructed from that solution, a direct way to check how well the inversion reproduces the input counts.
@@ -80,16 +74,11 @@ What the Returned Quantities Mean
 Relation to Other DEM Methods
 =============================
 
-Compared to parametric DEM fitting methods, ``demregpy`` does not begin by assuming that the DEM is a single Gaussian, a small sum of components, or some other fixed functional form.
-That makes it less prescriptive; the result is controlled by the data, the response matrix, and the regularization choices rather than by a small set of model parameters.
-This also makes it more vulnerable to systematic errors in e.g. in the temperature response functions.
+Unlike parametric fitting, ``demregpy`` does not assume a fixed functional form for the DEM, making results data-driven but more sensitive to response-matrix errors.
 
-Compared to sampling-based approaches such as `demcmc <https://demcmc.readthedocs.io/en/latest/index.html>`_, ``demregpy`` uses a deterministic GSVD-based solve rather than Monte Carlo sampling.
-That makes it computationally fast and practical for lines, maps, and time-dependent data where many DEMs need to be recovered in one run.
+Unlike sampling-based approaches (e.g. `demcmc <https://demcmc.readthedocs.io/en/latest/index.html>`_), ``demregpy`` uses a deterministic GSVD solve, enabling rapid batch processing of maps and time series.
 
-This speed comes with a different set of assumptions and inputs.
-``demregpy`` requires uncertainties on the input data because the inversion is carried out in a weighted space and the regularization parameter is chosen against a target reduced chi-squared, :math:`\chi_\nu^2`.
-In return, the package provides not only a recovered DEM and reconstructed data, but also a vertical uncertainty estimate ``edem`` and a horizontal temperature-resolution estimate ``elogt``.
+``demregpy`` requires uncertainties on the input data because the solve is carried out in a weighted space and the regularization parameter is chosen against a target :math:`\chi_\nu^2`.
 
 See Also
 ========

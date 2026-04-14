@@ -3,10 +3,7 @@
 AIA Single Pixel
 ================
 
-This example shows how to run ``dn2dem`` on a single AIA pixel.
-The count rates come from AIA maps and the response matrix comes from the bundled AIA temperature response file.
-The example shows the minimum set of ingredients needed for a DEM inversion from real AIA data.
-The same workflow extends directly to any other AIA pixel once the channel counts, uncertainties, and response matrix have been prepared.
+Minimal ``dn2dem`` inversion on one AIA pixel.
 """
 
 import matplotlib.pyplot as plt
@@ -17,12 +14,10 @@ from demregpy.plotting import plot_dem
 from demregpy.tests.example_data import load_aia_full_disk_maps
 
 # %%
-# Start by extracting one pixel from a set of co-aligned AIA maps.
-# The inversion requires the set of filter values, their uncertainties, and the corresponding temperature response matrix.
-# We only use the optically thin AIA channels here as absorption makes the 304 channel less useful for DEMs.
-# The map values are converted to count rates by dividing by exposure time before the inversion.
-# A moderately bright coronal pixel is used here so the signal is clearer than a quiet-Sun pixel near the map centre.
-# This compact example does not apply an additional time-dependent degradation correction.
+# Extract one pixel from co-aligned AIA maps.
+# Only optically thin channels are used; 304 A is excluded because absorption makes it less useful for DEMs.
+# Map values are converted to count rates by dividing by exposure time.
+# No additional time-dependent degradation correction is applied here.
 
 maps = load_aia_full_disk_maps()
 rate_maps = [amap / amap.exposure_time for amap in maps]
@@ -39,10 +34,9 @@ mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 print("Input DN / pix / s:", dn_in)
 
 # %%
-# The inversion needs one count vector, one uncertainty vector, the response matrix, and the target temperature grid.
-# We use a flat error plus 10% uncertainty model here, but a full AIA analysis might use a more instrument-specific error estimate.
-# The errors play a large role in the solution calculated by demregpy;
-# Underestimating errors will lead to very low rates of convergence and overfitting, while overestimating errors will lead to very high rates of convergence but a smoother solution that may miss real structure in the DEM.
+# We use a flat error floor plus 10% fractional uncertainty.
+# A full analysis might use a more instrument-specific error model.
+# Errors matter: under-estimates cause overfitting and poor convergence; over-estimates produce over-smoothed solutions.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
@@ -57,8 +51,8 @@ dem, edem, elogt, chisq, dn_reg = dn2dem(
 print(f"chi-squared: {chisq:.3f}")
 
 # %%
-# For real data, the reconstructed counts are usually the quickest check of whether the inversion is behaving sensibly.
-# If the channel-by-channel fit looks poor, it is often better to revisit the inputs and the uncertainty model before over-interpreting the DEM curve itself.
+# The reconstructed counts are the quickest check of inversion quality.
+# If the channel fit looks poor, revisit the inputs and uncertainty model before interpreting the DEM.
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 

@@ -2,17 +2,7 @@
 dn2dem Tutorial
 ***********************
 
-This tutorial works through an example of using demregpy to recover a Differential Emission Measure (DEM) from synthetic data.
-The aim is to:
-
-- build a simple DEM model
-- generate synthetic counts using a fake temperature response matrix
-- recover a DEM using :func:`demregpy.dn2dem`
-- compare the recovered counts with the input data
-- briefly explore some of the different optional arguments to ``dn2dem`` that affect the weighting and solution space
-- see how the same principles extend to larger input arrays
-
-By the end, you should have a clear picture of using ``dn2dem`` to produce DEMs.
+This page works through a synthetic DEM recovery with :func:`demregpy.dn2dem`, covering the default solve, weighting options, EMD mode, and multi-dimensional inputs.
 
 Set Up a Small Synthetic Problem
 ================================
@@ -50,17 +40,8 @@ Start with a compact temperature response matrix and one DEM profile.
    temps = 10 ** np.linspace(tresp_logt.min(), tresp_logt.max(), tresp_logt.size + 1)
    mlogt = 0.5 * (np.log10(temps[:-1]) + np.log10(temps[1:]))
 
-At this point you have:
-
-- ``synthetic.dn_in``: the counts you will pass to ``dn2dem``
-- ``synthetic.edn_in``: the corresponding uncertainties
-- ``trmatrix`` and ``tresp_logt``: the response matrix and its log10(T) grid
-- ``temps``: the temperature-bin edges for the recovered DEM
-
 Recover the DEM
 ===============
-
-The primary way to recover a DEM is via :func:`demregpy.dn2dem`, which uses regularised inversion to solve for the unknown DEM.
 
 .. code-block:: python
 
@@ -74,21 +55,8 @@ The primary way to recover a DEM is via :func:`demregpy.dn2dem`, which uses regu
        warn=False,
    )
 
-The returned arrays are:
-
-- ``dem``: the recovered DEM
-- ``edem``: vertical uncertainties on the DEM
-- ``elogt``: horizontal temperature resolution estimates
-- ``chisq``: the final reduced chi-squared
-- ``dn_reg``: counts reconstructed from the recovered DEM
-
 Plot the DEM and Check the Data Fit
 ===================================
-
-To check the quality of the recovered DEM, you can:
-
-1. compare the recovered DEM with what you expect
-2. compare ``dn_reg`` with the original channel counts
 
 .. code-block:: python
 
@@ -213,10 +181,9 @@ If you want the returned result in EMD units as well, add ``emd_ret=True``.
 Using ``dn2dem`` with Other Input Shapes
 ========================================
 
-Carrying out many DEMs at once is not only easy but is also significantly faster.
-The last axis of the input arrays, ``dn_in`` and ``edn_in``, is always the filter or channel, corresponding to the columns of the response matrix.
-The remaining leading axes are treated as independent spectra, and the same solve is carried out for each spectrum in turn.
-You can provide up to 3 leading axes, so the input can be up to 4D, with the filter axis last.
+The last axis of ``dn_in`` and ``edn_in`` is always the channel axis.
+Leading axes are treated as independent spectra and solved in parallel.
+Up to three leading axes are supported (4D input, channel-last).
 
 Common shapes are:
 
@@ -241,17 +208,12 @@ For example, if you have ten spectra stacked in time:
        warn=False,
    )
 
-The output has the same leading shape, with the filter axis replaced by temperature bin.
-In this case:
+Output leading axes match the input; the channel axis is replaced by temperature bins.
 
-- ``dn_series`` has shape ``(10, nf)``
-- ``dem_series`` has shape ``(10, nt)``
-- ``chisq_series`` has shape ``(10,)``
+See Also
+========
 
-Where To Go Next
-================
-
-- :doc:`method` for an explanation of how the inversion works.
-- :doc:`weighting` for more detail on the weighting-related options
-- :doc:`generated/gallery/index` for more runnable examples
-- :doc:`api` for the full function signatures and lower-level routines
+- :doc:`method` — inversion details.
+- :doc:`weighting` — weighting options.
+- :doc:`generated/gallery/index` — runnable examples.
+- :doc:`api` — full function signatures.

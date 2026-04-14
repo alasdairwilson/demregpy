@@ -3,9 +3,7 @@
 AIA Flare DEMogram
 ==================
 
-Build an area-summed DEMogram from a small local AIA flare time series.
-The cutouts are converted to count rates and then summed over area, so the example produces one DEM per time step rather than one DEM per pixel.
-This is a useful pattern when the main question is how the thermal distribution of a region evolves with time rather than how it varies from pixel to pixel.
+Area-summed DEMogram from a small AIA flare time series.
 """
 
 import matplotlib.pyplot as plt
@@ -15,10 +13,8 @@ from demregpy import dn2dem, load_aia_response
 from demregpy.tests.example_data import load_aia_flare_timeseries
 
 # %%
-# The spatial information is reduced on purpose here.
-# Summing over the region trades spatial detail for a cleaner time-dependent signal that is easy to turn into a DEMogram.
-# Each channel is converted to a count rate before summing so the time series is not biased by different exposure times.
-# This compact example does not apply an additional time-dependent degradation correction.
+# Counts are converted to rates and summed over the region, trading spatial detail for a cleaner time-dependent signal.
+# No additional time-dependent degradation correction is applied here.
 
 map_rows = load_aia_flare_timeseries()
 channels, tresp_logt, trmatrix = load_aia_response()
@@ -44,8 +40,7 @@ reference_index = 0
 peak_index = int(np.argmax(dn_in[:, 0]))
 
 # %%
-# The key point is that a time series of region-summed counts is still just a stack of spectra.
-# That makes a DEMogram a direct extension of the same solver call used for single spectra and small maps.
+# A time series of region-summed counts is just a stack of spectra, so the same ``dn2dem`` call applies.
 
 dem, edem, elogt, chisq, dn_reg = dn2dem(
     dn_in,
@@ -69,8 +64,7 @@ print(f"Peak 94 A time step: {peak} ({time_tags[peak]})")
 print(f"Chi-squared range: {float(np.min(chisq)):.3f} .. {float(np.max(chisq)):.3f}")
 
 # %%
-# The AIA images provide context for what the selected region is doing morphologically.
-# The DEMogram and the change-from-reference panel then show how that same event evolves in temperature space.
+# Context images for the region, followed by the DEMogram and change-from-reference panel.
 
 fig, axes = plt.subplots(2, 2, figsize=(11, 8), constrained_layout=True)
 
