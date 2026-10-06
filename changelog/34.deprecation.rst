@@ -1,0 +1,2 @@
+The ``nmu`` argument of `~demregpy.dn2dem`, `~demregpy.demmap`, `~demregpy.dem_unwrap` and `~demregpy.dem_pix` is deprecated and has no effect, because the regularisation parameter is now solved for exactly rather than picked from ``nmu`` trial values.
+Passing it emits a `DeprecationWarning`, and it will be removed in demregpy 2.0.

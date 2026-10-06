@@ -51,7 +51,6 @@ dem, edem, elogt, chisq, dn_reg = dn2dem(
     trmatrix,
     tresp_logt,
     temps,
-    nmu=40,
     warn=False,
 )
 

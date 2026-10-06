@@ -2,6 +2,8 @@
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+import warnings
+
 import numpy as np
 from numpy.linalg import svd
 from scipy.optimize import brentq
@@ -14,9 +16,21 @@ __all__ = [
     'demmap',
 ]
 
+
+def _warn_nmu_deprecated(nmu):
+    """Warn if the deprecated ``nmu`` argument was passed."""
+    if nmu is not None:
+        warnings.warn(
+            "nmu is deprecated and has no effect, because the regularisation parameter is now "
+            "solved for exactly. It will be removed in demregpy 2.0.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+
 def demmap(
     dd, ed, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-    rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False
+    rgt_fact=1.5, dem_norm0=None, nmu=None, warn=False, l_emd=False
 ):
     """
     Recover DEMs for a stack of one-dimensional observations.
@@ -50,7 +64,7 @@ def demmap(
     dem_norm0 : array_like, optional
         Provides a "guess" dem as a starting point, if none is supplied one is created. Default is None.
     nmu : int, optional
-        Number of reg param samples to use. Default is 42.
+        Deprecated and has no effect. Will be removed in demregpy 2.0.
     warn : bool, optional
         Print out warnings. Default is False.
     l_emd : bool, optional
@@ -69,6 +83,7 @@ def demmap(
     dn_reg : ndarray
         Reconstructed counts with shape ``(na, nf)``.
     """
+    _warn_nmu_deprecated(nmu)
     na = dd.shape[0]
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
@@ -91,7 +106,7 @@ def demmap(
                 futures = [exe.submit(dem_unwrap, dd[i*n_par:(i+1)*n_par, :], ed[i*n_par:(i+1)*n_par, :],
                            rmatrix, logt, dlogt, glc, reg_tweak=reg_tweak, max_iter=max_iter,
                            rgt_fact=rgt_fact, dem_norm0=dem_norm0[i*n_par:(i+1)*n_par, :],
-                           nmu=nmu, warn=warn, l_emd=l_emd) for i in np.arange(niter)]
+                           warn=warn, l_emd=l_emd) for i in np.arange(niter)]
                 kwargs = {
                     'total': len(futures),
                     'unit': ' x10^2 DEM',
@@ -114,7 +129,7 @@ def demmap(
                     result = dem_pix(dd[i_start+i, :], ed[i_start+i, :], rmatrix, logt, dlogt, glc,
                                      reg_tweak=reg_tweak, max_iter=max_iter, rgt_fact=rgt_fact,
                                      dem_norm0=dem_norm0[i_start+i, :],
-                                     nmu=nmu, warn=warn, l_emd=l_emd)
+                                     warn=warn, l_emd=l_emd)
                     dem[i_start+i, :] = result[0]
                     edem[i_start+i, :] = result[1]
                     elogt[i_start+i, :] = result[2]
@@ -125,7 +140,7 @@ def demmap(
         for i in range(na):
             result = dem_pix(dd[i, :], ed[i, :], rmatrix, logt, dlogt, glc,
                              reg_tweak=reg_tweak, max_iter=max_iter, rgt_fact=rgt_fact,
-                             dem_norm0=dem_norm0[i, :], nmu=nmu, warn=warn, l_emd=l_emd)
+                             dem_norm0=dem_norm0[i, :], warn=warn, l_emd=l_emd)
             dem[i, :] = result[0]
             edem[i, :] = result[1]
             elogt[i, :] = result[2]
@@ -136,7 +151,7 @@ def demmap(
 
 def dem_unwrap(
     dn, ed, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-    rgt_fact=1.5, dem_norm0=None, nmu=42, warn=False, l_emd=False
+    rgt_fact=1.5, dem_norm0=None, nmu=None, warn=False, l_emd=False
 ):
     """
     Run :func:`dem_pix` over a stack of observations in serial.
@@ -165,7 +180,7 @@ def dem_unwrap(
     dem_norm0 : array_like, optional
         Initial guess at the dem shape, by default 0
     nmu : int, optional
-        number of reg param samples to use, by default 42
+        Deprecated and has no effect. Will be removed in demregpy 2.0.
     warn : bool, optional
         Print warnings, by default False
     l_emd : bool, optional
@@ -184,6 +199,7 @@ def dem_unwrap(
     dn_reg : ndarray
         Reconstructed counts with shape ``(ndem, nf)``.
     """
+    _warn_nmu_deprecated(nmu)
     ndem = dn.shape[0]
     nt = logt.shape[0]
     nf = dn.shape[1]
@@ -200,7 +216,7 @@ def dem_unwrap(
         result = dem_pix(
             dn[i, :], ed[i, :], rmatrix, logt, dlogt, glc,
             reg_tweak=reg_tweak, max_iter=max_iter, rgt_fact=rgt_fact,
-            dem_norm0=dem_norm0[i, :], nmu=nmu, warn=warn, l_emd=l_emd
+            dem_norm0=dem_norm0[i, :], warn=warn, l_emd=l_emd
         )
         dem[i, :] = result[0]
         edem[i, :] = result[1]
@@ -211,7 +227,7 @@ def dem_unwrap(
 
 
 def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
-            rgt_fact=1.5, dem_norm0=None, nmu=42, warn=True, l_emd=False):
+            rgt_fact=1.5, dem_norm0=None, nmu=None, warn=True, l_emd=False):
     """
     Recover a DEM for one observation vector.
 
@@ -239,7 +255,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     dem_norm0 : array_like, optional
         Initial guess at the dem shape, by default 0
     nmu : int, optional
-        number of reg param samples to use, by default 42
+        Deprecated and has no effect. Will be removed in demregpy 2.0.
     warn : bool, optional
         Print warnings, by default False
     l_emd : bool, optional
@@ -258,6 +274,7 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
     dn_reg : ndarray
         Reconstructed counts for each filter.
     """
+    _warn_nmu_deprecated(nmu)
     nf = rmatrix.shape[1]
     nt = logt.shape[0]
     if not np.all(np.isfinite(dnin)):

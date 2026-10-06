@@ -42,7 +42,6 @@ dem_out_single, edem_single, elogt_single, chisq_single, dn_reg_single = dn2dem(
     trmatrix_single,
     tresp_logt_single,
     temps_single,
-    nmu=50,
     warn=False,
 )
 # The chi-squared value should be close to 1, but this does depend on the accuracy of your errors.
@@ -103,7 +102,6 @@ dem_out_multi, edem_multi, elogt_multi, chisq_multi, dn_reg_multi = dn2dem(
     trmatrix_multi,
     tresp_logt_multi,
     temps_multi,
-    nmu=80,
     warn=False,
 )
 
