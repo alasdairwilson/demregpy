@@ -4,6 +4,8 @@ omit =
   demregpy/*setup_package*
   demregpy/extern/*
   demregpy/version*
+  demregpy/_dev/*
+  */demregpy/_dev/*
   */demregpy/conftest.py
   */demregpy/*setup_package*
   */demregpy/extern/*
