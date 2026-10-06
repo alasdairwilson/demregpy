@@ -16,7 +16,7 @@ The clearest sign that results are affected is a returned :math:`\chi^2` that is
 .. _whatsnew-1-1-svd:
 
 Changing GSVD to SVD
-================
+====================
 
 ``dn2dem`` finds the DEM :math:`\xi` that minimises
 
