@@ -4,34 +4,18 @@
 Version 1.1
 ***********
 
-Version 1.1 fixes a problem in how :func:`demregpy.dn2dem` chooses the regularisation parameter.
-With some response units, the old search could stop before reaching strong enough regularisation,
-returning an almost unregularised DEM. The new search covers the appropriate range regardless of
-response scale, and finds the parameter that meets the target :math:`\chi^2` without relying on a
-grid of trial values.
+Version 1.1 makes two fundamental changes to the inversion process:
 
-In practice, AIA results change only slightly, while data expressed in other units may change more
-substantially. The sections below explain the cause and show examples.
-
-1. **To fix the upper bound of the search.**
-   The old search could stop short of strong enough regularisation, so for data in some units ``dn2dem`` returned an almost unregularised DEM.
-   The search now spans the relevant range when the temperature response is rescaled.
-2. **To remove the need for discrete grid points.**
-   The old method picked the nearest of a fixed set of trial values, so :math:`\chi^2` only landed near its target and the answer depended on how many values were tried.
-   The regularisation parameter is now solved for exactly.
-
-The fix was initially motivated by the upper-bound issue. Once the parameter was searched for over the right range, the grid discretisation could also be removed.
-
-Alongside this, the inversion itself now uses an ordinary SVD instead of a generalised SVD (GSVD).
-For a given regularisation parameter this gives the same DEM, but with less work, and it compares the regularisation parameter directly with the quantities that set its scale, which makes the right search range obvious (see :ref:`whatsnew-1-1-svd`).
+* **Changed GSVD to SVD.** Because the constraint matrix is diagonal, an ordinary SVD gives the same DEM with less work and makes the regularisation scale clearer. See :ref:`whatsnew-1-1-svd`.
+* **Replaced the discrete grid to a solved regularisation parameter.** Instead of selecting the nearest of a fixed set of trial values, the solver finds the value that meets the target :math:`\chi^2`. This also fixes cases where the old search did not reach strong enough regularisation.
 
 For AIA data, results change by a few percent per temperature bin, and accuracy against synthetic DEMs is similar.
-If you previously ran ``dn2dem`` on data in other units, such as irradiances or emission measures, or rescaled the inputs to order-one values, you may see a larger change.
+If you previously ran ``dn2dem`` on data in very small or very large units, or rescaled data inputs to order-one values, you may see a larger change.
 The clearest sign that results are affected is a returned :math:`\chi^2` that is very far from 1 (such as 0).
 
 .. _whatsnew-1-1-svd:
 
-From GSVD to SVD
+Changing GSVD to SVD
 ================
 
 ``dn2dem`` finds the DEM :math:`\xi` that minimises
@@ -40,21 +24,20 @@ From GSVD to SVD
 
    \|K\xi - g\|^2 + \lambda \|L\xi\|^2
 
-where :math:`K` is the temperature response and :math:`g` the data, both divided by the uncertainties, and :math:`L` is the diagonal constraint matrix built from the weighting (see :doc:`/weighting`).
+where :math:`K` is the temperature response matrix and :math:`g` the data, both divided by the uncertainties, and :math:`L` is the diagonal constraint matrix built from the weighting (see :doc:`/weighting`).
 
 Earlier versions solved this with a generalised SVD (GSVD) of the pair :math:`K` and :math:`L`, which is the general tool for this problem when :math:`L` can be any matrix.
-In ``demregpy``, :math:`L` is always diagonal, and then the GSVD reduces to an ordinary SVD.
+However, in ``demregpy``, :math:`L` is always diagonal, and then the GSVD can be reduced to an ordinary SVD.
 Dividing each column of :math:`K` by the matching diagonal entry of :math:`L` gives :math:`K L^{-1} = U\,\mathrm{diag}(s_i)\,V^\mathsf{T}`, and the solution for any :math:`\lambda` is
 
 .. math::
 
    \xi_\lambda = L^{-1} V\,\mathrm{diag}\!\left(\frac{s_i}{s_i^2 + \lambda}\right) U^\mathsf{T} g
 
-The singular values :math:`s_i` are the same as the GSVD's generalised singular values, so for a given :math:`\lambda` both give the same DEM.
-The difference is in the work around them.
+The singular values :math:`s_i` are identical to the GSVD's generalised singular values, so for a given :math:`\lambda` both give the same DEM.
 The old code also started from an SVD of :math:`K L^{-1}`, but then converted each :math:`s_i` into the GSVD's normalised pair :math:`\alpha_i = s_i / \sqrt{1 + s_i^2}` and :math:`\beta_i = 1 / \sqrt{1 + s_i^2}`, and rebuilt the solution through a pseudo-inverse of an :math:`n_T \times n_T` matrix.
 The new code is one SVD plus element-wise scaling, with no pseudo-inverse.
-It also leaves :math:`\lambda` compared directly with :math:`s_i^2`, which is what the next section relies on.
+It also leaves :math:`\lambda` compared directly with :math:`s_i^2` which allows for a precise choice of the regularisation parameter.
 
 How the regularisation parameter is chosen
 ==========================================
