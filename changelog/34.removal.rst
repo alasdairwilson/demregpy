@@ -1,0 +1,1 @@
+Removed ``demregpy.dem_inv_gsvd`` and ``demregpy.dem_reg_map``, the GSVD and the grid search over regularisation parameters, which the inversion no longer uses.
