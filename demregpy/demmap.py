@@ -3,15 +3,13 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
-from numpy.linalg import pinv, svd
+from numpy.linalg import svd
 from scipy.optimize import brentq
 from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 
 __all__ = [
-    'dem_inv_gsvd',
     'dem_pix',
-    'dem_reg_map',
     'dem_unwrap',
     'demmap',
 ]
@@ -425,146 +423,3 @@ def _regularised_inverse(basis, lam):
     s = basis["s"]
     filt = s / (s**2 + lam)
     return basis["linv"][:, None] * (basis["V"] @ (filt[:, None] * basis["U"].T))
-
-
-def _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu):
-    """Precompute the regularization misfit curve for a fixed GSVD."""
-    nf = data.shape[0]
-    sigs = sigmaa[:nf]/sigmab[:nf]
-    maxx = np.max(sigs)
-    minx = np.min(sigs)**2.0*1E-4
-    minx = max(minx, np.finfo(float).tiny)
-    denom = max(nmu - 1.0, 1.0)
-    log_min = np.log(minx)
-    log_max = np.log(maxx)
-    log_max = min(log_max, np.log(np.finfo(float).max))
-    step = (log_max - log_min) / denom
-    log_mu = log_min + np.arange(nmu) * step
-    log_mu = np.clip(log_mu, log_min, log_max)
-    mu = np.exp(log_mu)
-    coef = U[:nf, :] @ data
-    sigmab_sq = sigmab[:nf, None]**2
-    numerator = mu[None, :] * sigmab_sq * coef[:, None]
-    denom = sigmaa[:nf, None]**2 + mu[None, :] * sigmab_sq
-    misfit_curve = np.sum((numerator / denom)**2, axis=0)
-    err_term = np.sum(err**2)
-    return mu, misfit_curve, err_term
-
-
-def _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak):
-    """Select the regularization parameter for a given target misfit."""
-    discr = misfit_curve - err_term * reg_tweak
-    return mu[np.argmin(np.abs(discr))]
-
-
-def dem_reg_map(sigmaa, sigmab, U, W, data, err, reg_tweak, nmu=500):
-    """
-    Select the regularization parameter from a GSVD solution.
-
-    Parameters
-    ----------
-    sigmaa : array_like
-        GSVD ``alpha`` singular values.
-    sigmab : array_like
-        GSVD ``beta`` singular values.
-    U : ndarray
-        GSVD ``U`` matrix.
-    W : ndarray
-        GSVD ``W`` matrix.
-        Unused.
-    data : array_like
-        Data vector in the weighted space used by the inversion.
-    err : array_like
-        Uncertainty vector corresponding to ``data``.
-    reg_tweak : float
-        Target chi-squared scaling used when choosing the regularization
-        parameter.
-    nmu : int, optional
-        Number of candidate regularization parameters to sample.
-
-    Returns
-    -------
-    float
-        Selected regularization parameter.
-    """
-    mu, misfit_curve, err_term = _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu)
-    return _dem_reg_map_select(mu, misfit_curve, err_term, reg_tweak)
-
-
-def _dem_inv_gsvd_from_bdiag(A, bdiag):
-    """GSVD helper for the common case where B is diagonal."""
-    bdiag = np.asarray(bdiag)
-    bdiag_inv = np.divide(
-        1.0,
-        bdiag,
-        out=np.zeros_like(bdiag, dtype=np.result_type(A, bdiag, float)),
-        where=bdiag != 0,
-    )
-    # For diagonal B, A @ pinv(B) is just column scaling by pinv(diag(B)).
-    AB1 = A * bdiag_inv
-    sze = AB1.shape
-    p = max(sze)
-    # Use the rectangular SVD directly, then pad the singular spectrum and U rows
-    # to preserve the output shapes expected by the existing GSVD code.
-    u, s, v = svd(AB1, full_matrices=True, compute_uv=True)
-    s_pad = np.zeros(p, dtype=s.dtype)
-    s_pad[:s.shape[0]] = s
-    beta = 1.0 / np.sqrt(1 + s_pad**2)
-    alpha = s_pad * beta
-    U = np.zeros((p, sze[0]), dtype=u.dtype)
-    U[:u.shape[1], :] = u.T
-    vb = v / beta[:, None]
-    w2 = pinv(vb * bdiag[np.newaxis, :])
-    return alpha, beta, U, v.T, w2
-
-
-def dem_inv_gsvd_diag(A, bdiag):
-    """Perform the GSVD of A with diagonal B defined by its diagonal entries."""
-    return _dem_inv_gsvd_from_bdiag(A, bdiag)
-
-
-def dem_inv_gsvd(A, B):
-    """
-    Perform the generalised singular value decomposition of ``A`` and ``B``.
-
-    Parameters
-    ----------
-    A : ndarray
-        Response-like matrix.
-    B : ndarray
-        Regularisation matrix.
-
-    Returns
-    -------
-    alpha : array_like
-        Diagonal values of ``SA``.
-    beta : array_like
-        Diagonal values of ``SB``.
-    U : ndarray
-        Left GSVD factor for ``A``.
-    V : ndarray
-        Left GSVD factor for ``B``.
-    w2 : ndarray
-        Right GSVD factor.
-    """
-    bdiag = np.diagonal(B)
-    if np.all(B == np.diag(bdiag)):
-        return _dem_inv_gsvd_from_bdiag(A, bdiag)
-    # calculate the matrix A*B^-1
-    AB1 = A@pinv(B)
-    sze = AB1.shape
-    p = max(sze)
-    # Keep the historical output shapes while avoiding explicit padding of the
-    # matrix passed into SVD.
-    u, s, v = svd(AB1, full_matrices=True, compute_uv=True)
-    # from the svd products calculate the diagonal components form the gsvd
-    s_pad = np.zeros(p, dtype=s.dtype)
-    s_pad[:s.shape[0]] = s
-    beta = 1./np.sqrt(1+s_pad**2)
-    alpha = s_pad*beta
-    U = np.zeros((p, sze[0]), dtype=u.dtype)
-    U[:u.shape[1], :] = u.T
-    # calculate the w matrix
-    w2 = pinv((v / beta[:, None]) @ B)
-    # return gsvd products, transposing v as we do.
-    return alpha, beta, U, v.T, w2
