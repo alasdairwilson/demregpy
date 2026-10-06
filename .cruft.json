@@ -16,7 +16,7 @@
       "documentation_url": "",
       "changelog_url": "",
       "issue_tracker_url": "https://github.com/alasdairwilson/demregpy/issues/",
-      "license": "MIT",
+      "license": "Other",
       "minimum_python_version": "3.12",
       "use_compiled_extensions": "n",
       "enable_dynamic_dev_versions": "y",
