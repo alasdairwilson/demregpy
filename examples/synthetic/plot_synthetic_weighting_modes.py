@@ -40,7 +40,6 @@ solutions = {
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
     ),
     "Gloci": dn2dem(
@@ -50,7 +49,6 @@ solutions = {
         tresp_logt,
         temps,
         gloci=1,
-        nmu=50,
         warn=False,
     ),
     "User Weight": dn2dem(
@@ -60,7 +58,6 @@ solutions = {
         tresp_logt,
         temps,
         dem_norm0=user_weight,
-        nmu=50,
         warn=False,
     ),
 }

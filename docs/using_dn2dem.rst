@@ -51,7 +51,6 @@ Recover the DEM
        trmatrix,
        tresp_logt,
        temps,
-       nmu=50,
        warn=False,
    )
 

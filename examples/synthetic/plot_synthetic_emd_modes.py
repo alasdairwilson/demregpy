@@ -41,7 +41,6 @@ solutions = {
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
     ),
     "L_EMD": dn2dem(
@@ -51,7 +50,6 @@ solutions = {
         tresp_logt,
         temps,
         l_emd=True,
-        nmu=50,
         warn=False,
     ),
     "EMD Internal": dn2dem(
@@ -63,7 +61,6 @@ solutions = {
         emd_int=True,
         emd_ret=False,
         gloci=1,
-        nmu=50,
         warn=False,
     ),
 }

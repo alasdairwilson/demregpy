@@ -57,7 +57,7 @@ def main() -> int:
     temps = 10 ** logtemps
 
     def run():
-        dn2dem(data, edata, trmatrix, tresp_logt, temps, nmu=40, warn=False)
+        dn2dem(data, edata, trmatrix, tresp_logt, temps, warn=False)
 
     results = timeit.repeat(run, repeat=args.repeat, number=args.number)
     best = min(results) / args.number

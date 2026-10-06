@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from demregpy.demmap import demmap
+from demregpy.demmap import _warn_nmu_deprecated, demmap
 
 __all__ = [
     'dn2dem',
@@ -29,7 +29,7 @@ def _normalize_gloci(gloci, nf):
 
 
 def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, gloci=0,
-           rgt_fact=1.5, dem_norm0=None, nmu=40, warn=False, emd_int=False, emd_ret=False, l_emd=False, non_pos=False):
+           rgt_fact=1.5, dem_norm0=None, nmu=None, warn=False, emd_int=False, emd_ret=False, l_emd=False, non_pos=False):
     """
     Recover a differential emission measure from channel counts.
 
@@ -74,8 +74,7 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         ``gloci``.
         Default is None.
     nmu : int, optional
-        Number of reg param samples to calculate (default (or <=40) 500 for 0D, 42 for map).
-        Default is 40.
+        Deprecated and has no effect. Will be removed in demregpy 2.0.
     warn : bool, optional
         Print out any warnings (always warn for 1D, default no for higher dim data).
         Default is False.
@@ -157,13 +156,10 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
             raise ValueError(f"dem_norm0 must have shape {expected_dem_shape} or {(nt,)}")
         dem0 = np.reshape(dem0, (nobs, nt))
 
+    _warn_nmu_deprecated(nmu)
     if dn_in.ndim == 1:
         if warn is False:
             warn = True
-        if nmu <= 40:
-            nmu = 500
-    elif nmu <= 40:
-        nmu = 42
     # If want to ignore positivity constraint then set max_iter=1 and no need for the warnings
     if non_pos:
         max_iter = 1
@@ -229,12 +225,12 @@ def dn2dem(dn_in, edn_in, tresp, tresp_logt, temps, reg_tweak=1.0, max_iter=10, 
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt, dlogt, glc,
                    reg_tweak=reg_tweak, max_iter=max_iter,
-                   rgt_fact=rgt_fact, dem_norm0=dem0, nmu=nmu, warn=warn, l_emd=l_emd)
+                   rgt_fact=rgt_fact, dem_norm0=dem0, warn=warn, l_emd=l_emd)
     else:
         dem1d, edem1d, elogt1d, chisq1d, dn_reg1d = \
             demmap(dn1d, edn1d, rmatrix, logt,
                    dlogt, glc, reg_tweak=reg_tweak, max_iter=max_iter,
-                   rgt_fact=rgt_fact, dem_norm0=None, nmu=nmu, warn=warn, l_emd=l_emd)
+                   rgt_fact=rgt_fact, dem_norm0=None, warn=warn, l_emd=l_emd)
 
     dem = np.reshape(dem1d, (*leading_shape, nt))*sclf
     edem = np.reshape(edem1d, (*leading_shape, nt))*sclf
