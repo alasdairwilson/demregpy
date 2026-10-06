@@ -4,6 +4,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 from numpy.linalg import pinv, svd
+from scipy.optimize import brentq
 from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 
@@ -310,23 +311,17 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
             # Calculate the initial constraint matrix
             # Just a diagonal matrix scaled by dlogT
             ldiag = 1.0 / np.sqrt(dlogt[:])
-            # run gsvd
-            sva, svb, U, _V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
-            # run reg map
-            mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
-            lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
-            # filt, diagonal matrix
-            U_nf = U[:nf, :nf]
-            W_nf = W[:, :nf]
-            sva_nf = sva[:nf]
-            svb_nf_sq = svb[:nf]**2
-            filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
-            kdag = W_nf @ (U_nf * filt_diag[:, None])
+            # solve once and use the result only to weight the real solve below
+            basis = _standard_form_svd(rmatrixin.T, ldiag)
+            lamb = _discrepancy_lambda(basis, dn, rgt * np.sum(edn**2))
+            kdag = _regularised_inverse(basis, lamb)
             dr0 = (kdag@dn).squeeze()
             # only take the positive with certain amount (fcofmx) of max, then make rest small positive
             fcofmax = 1e-4
             mask = (dr0 > 0) & (dr0 > fcofmax * np.max(dr0))
-            dem_reg_lwght = np.ones(nt)
+            # fill the rest relative to dr0's peak, so the weighting doesn't depend on units
+            fill = fcofmax * np.max(dr0) if np.any(mask) else 1.0
+            dem_reg_lwght = np.full(nt, fill)
             dem_reg_lwght[mask] = dr0[mask]
         # ~~~~~~~~~~~~~~~~~
         # Just smooth these initial dem_reg_lwght and max sure no value is too small
@@ -337,27 +332,18 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         # Otherwise just set dem_reg to inputted weight
         dem_reg_lwght = dem_norm0
     # Now actually do the dem regularisation using the L weighting from above
-    # Faster to do this and the GSVD on R and L before the pos loop
+    # Faster to do this and the SVD on R and L before the pos loop
     if l_emd:
         # this works better with EMD calc, instead of DEM
         ldiag = 1 / abs(dem_reg_lwght)
     else:
         ldiag = np.sqrt(dlogt) / np.sqrt(abs(dem_reg_lwght))
-    sva, svb, U, _V, W = dem_inv_gsvd_diag(rmatrixin.T, ldiag)
-    mu, misfit_curve, err_term = _dem_reg_map_curve(sva, svb, U, dn, edn, nmu)
-    U_nf = U[:nf, :nf]
-    W_nf = W[:, :nf]
-    sva_nf = sva[:nf]
-    svb_nf_sq = svb[:nf]**2
-    #  Now loop until positive solution or max_iter reached
+    basis = _standard_form_svd(rmatrixin.T, ldiag)
+    err_term = np.sum(edn**2)
+    # Loop until the DEM is positive or max_iter is reached, loosening the chi-squared target each time
     while ((ndem > 0) and (piter < max_iter)):
-        # #make L from 1/dem reg scaled by dlogt and diagonalise
-        # L=np.diag(np.sqrt(dlogt)/np.sqrt(abs(dem_reg_lwght)))
-        # #call gsvd and reg map
-        # sva,svb,U,V,W = dem_inv_gsvd(rmatrixin.T,L)
-        lamb = _dem_reg_map_select(mu, misfit_curve, err_term, rgt)
-        filt_diag = sva_nf / (sva_nf**2 + svb_nf_sq*lamb)
-        kdag = W_nf @ (U_nf * filt_diag[:, None])
+        lamb = _discrepancy_lambda(basis, dn, rgt * err_term)
+        kdag = _regularised_inverse(basis, lamb)
 
         dem_reg_out = (kdag@dn).squeeze()
 
@@ -384,6 +370,61 @@ def dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, reg_tweak=1.0, max_iter=10,
         if (np.sum(hm_mask) > 0):
             elogt[kk] = (ltt[hm_mask][-1]-ltt[hm_mask][0])/2
     return dem, edem, elogt, chisq, dn_reg
+
+
+def _standard_form_svd(A, ldiag):
+    """
+    SVD of the response with the diagonal constraint divided out, ``A L^-1 = U diag(s) V^T``.
+
+    The solution of min ||A x - d||^2 + lam ||L x||^2 is then
+    ``x = L^-1 V diag(s / (s^2 + lam)) U^T d`` for any regularisation strength ``lam``, so
+    trying many ``lam`` needs only this one decomposition.
+
+    Returns a dict with ``U`` (nf, k), ``s`` (k,), ``V`` (nt, k) and ``linv`` (nt,).
+    """
+    ldiag = np.asarray(ldiag, dtype=float)
+    linv = np.divide(1.0, ldiag, out=np.zeros_like(ldiag), where=ldiag != 0)
+    U, s, Vt = svd(A * linv[np.newaxis, :], full_matrices=False)
+    return {"U": U, "s": s, "V": Vt.T, "linv": linv}
+
+
+def _misfit(basis, coef, outside, lam):
+    """Misfit ||A x - d||^2 of the regularised solution at strength ``lam``."""
+    s2 = basis["s"] ** 2
+    return np.sum((lam / (s2 + lam) * coef) ** 2) + outside
+
+
+def _discrepancy_lambda(basis, data, target):
+    """
+    Find the regularisation strength at which the misfit just reaches ``target`` (the
+    discrepancy principle).
+
+    Stronger regularisation always fits worse, so there is a single answer and it is found exactly.
+    If ``target`` can't be reached, the nearer end of the search range is returned.
+    """
+    coef = basis["U"].T @ data
+    # the part of the data the response can't produce at all, so no strength can fit it
+    outside = max(float(np.sum(data**2) - np.sum(coef**2)), 0.0)
+    s2 = basis["s"] ** 2
+    s2pos = s2[s2 > 0]
+    if s2pos.size == 0:
+        return 1.0
+    # lam far below min(s^2) means almost no smoothing, far above max(s^2) almost total smoothing
+    lo, hi = np.log(s2pos.min() * 1e-8), np.log(s2pos.max() * 1e8)
+    f = lambda loglam: _misfit(basis, coef, outside, np.exp(loglam)) - target  # noqa: E731
+    flo, fhi = f(lo), f(hi)
+    if flo >= 0:
+        return float(np.exp(lo))
+    if fhi <= 0:
+        return float(np.exp(hi))
+    return float(np.exp(brentq(f, lo, hi, xtol=1e-10)))
+
+
+def _regularised_inverse(basis, lam):
+    """The (nt, nf) matrix ``L^-1 V diag(s / (s^2 + lam)) U^T`` taking weighted data to the DEM."""
+    s = basis["s"]
+    filt = s / (s**2 + lam)
+    return basis["linv"][:, None] * (basis["V"] @ (filt[:, None] * basis["U"].T))
 
 
 def _dem_reg_map_curve(sigmaa, sigmab, U, data, err, nmu):
