@@ -1,0 +1,4 @@
+`~demregpy.dn2dem` no longer depends on the units of the temperature response.
+Previously the regularisation parameter was picked from a grid of trial values whose range was set incorrectly, so data that are large compared with their uncertainties (e.g. irradiances, or emission measures rescaled to order one) came back with almost no regularisation, a chi-squared near zero and an oscillating DEM.
+The regularisation parameter is now solved for exactly, so chi-squared meets its target instead of landing on the nearest grid point.
+Results for most data change by only a few percent per temperature bin.

@@ -27,7 +27,8 @@ Regularization
 ==============
 
 Regularization balances data fidelity against a weighted smoothness constraint on the DEM.
-The regularization parameter is chosen from a grid of trial values to achieve a target :math:`\chi_\nu^2`, set by ``reg_tweak``.
+The regularization parameter is solved for exactly, so that the fit reaches a target :math:`\chi_\nu^2` set by ``reg_tweak`` (the discrepancy principle).
+Because the constraint matrix is diagonal, the problem can be solved with a single SVD, and the result does not depend on the units of the response.
 
 Algorithm
 =========
@@ -37,7 +38,7 @@ Algorithm
 1. Interpolate the response matrix onto the requested temperature grid.
 2. Build the forward operator in DEM or EMD space.
 3. Construct a diagonal constraint matrix from the chosen weighting (self-normalized, EM loci, or user-supplied).
-4. Solve the regularised inverse via GSVD.
+4. Solve the regularised inverse with an SVD, choosing the regularization parameter that reaches the target :math:`\chi_\nu^2`.
 5. If needed, increase the :math:`\chi_\nu^2` target and re-solve until the DEM is non-negative (unless ``non_pos=True``).
 6. Return the DEM, uncertainties, and reconstructed counts.
 
