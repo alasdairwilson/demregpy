@@ -1,31 +1,7 @@
 import numpy as np
 import pytest
 
-from demregpy.demmap import dem_inv_gsvd, dem_pix
-
-
-def test_dem_inv_gsvd_handles_singular_b():
-    # Typical usage: A is (nf, nt) with nf < nt, B is (nt, nt)
-    A = np.array(
-        [
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-        ]
-    )
-    B = np.array(
-        [
-            [1.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ]
-    )
-    alpha, beta, U, V, W = dem_inv_gsvd(A, B)
-    assert np.isfinite(alpha).all()
-    assert np.isfinite(beta).all()
-    assert np.isfinite(U).all()
-    assert np.isfinite(V).all()
-    assert np.isfinite(W).all()
-    assert U.shape[0] == V.shape[0] == W.shape[1]
+from demregpy.demmap import dem_pix
 
 
 def test_dem_pix_accepts_zero_dn():

@@ -47,7 +47,7 @@ def test_demmap_rejects_scalar_dem_norm0():
         demmap(dd, ed, rmatrix, logt, dlogt, glc, dem_norm0=0)
 
 
-class _StopAtGSVD(RuntimeError):
+class _StopAtSolver(RuntimeError):
     pass
 
 
@@ -86,13 +86,13 @@ def test_dem_pix_uses_gloci_weighting_from_selected_filters(monkeypatch):
     captured = []
     demmap_module = import_module("demregpy.demmap")
 
-    def fake_dem_inv_gsvd_diag(A, bdiag):
+    def fake_standard_form_svd(A, bdiag):
         captured.append(np.array(bdiag, copy=True))
-        raise _StopAtGSVD
+        raise _StopAtSolver
 
-    monkeypatch.setattr(demmap_module, "dem_inv_gsvd_diag", fake_dem_inv_gsvd_diag)
+    monkeypatch.setattr(demmap_module, "_standard_form_svd", fake_standard_form_svd)
 
-    with pytest.raises(_StopAtGSVD):
+    with pytest.raises(_StopAtSolver):
         dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, dem_norm0=None, warn=False)
 
     expected_weight = _smoothed_gloci_weight(dnin, rmatrix, glc)
@@ -120,13 +120,13 @@ def test_dem_pix_prefers_user_dem_norm0_over_gloci(monkeypatch):
     captured = []
     demmap_module = import_module("demregpy.demmap")
 
-    def fake_dem_inv_gsvd_diag(A, bdiag):
+    def fake_standard_form_svd(A, bdiag):
         captured.append(np.array(bdiag, copy=True))
-        raise _StopAtGSVD
+        raise _StopAtSolver
 
-    monkeypatch.setattr(demmap_module, "dem_inv_gsvd_diag", fake_dem_inv_gsvd_diag)
+    monkeypatch.setattr(demmap_module, "_standard_form_svd", fake_standard_form_svd)
 
-    with pytest.raises(_StopAtGSVD):
+    with pytest.raises(_StopAtSolver):
         dem_pix(dnin, ednin, rmatrix, logt, dlogt, glc, dem_norm0=dem_norm0, warn=False)
 
     expected_ldiag = np.sqrt(dlogt) / np.sqrt(dem_norm0)
