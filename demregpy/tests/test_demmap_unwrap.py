@@ -68,7 +68,7 @@ class TestDemmapCorrectness:
     def test_output_shapes(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=5)
         dem, edem, elogt, chisq, dn_reg = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         nobs, nf = dn_in.shape
         nt = logt.shape[0]
@@ -81,7 +81,7 @@ class TestDemmapCorrectness:
     def test_reconstruction_quality(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=5)
         _dem, _edem, _elogt, _chisq, dn_reg = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         ratio = dn_reg / dn_in
         assert np.all(ratio > 0.5), f"Reconstruction too low: min ratio {ratio.min():.3f}"
@@ -90,7 +90,7 @@ class TestDemmapCorrectness:
     def test_chisq_reasonable(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=5)
         _, _, _, chisq, _ = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         assert np.all(chisq > 0), "chi-squared must be positive"
         assert np.all(chisq < 10), f"chi-squared unreasonably large: max {chisq.max():.1f}"
@@ -98,14 +98,14 @@ class TestDemmapCorrectness:
     def test_dem_non_negative(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=5)
         dem, _, _, _, _ = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         assert np.all(dem >= 0), "Default demmap should return non-negative DEMs"
 
     def test_single_observation(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=1)
         dem, _edem, _elogt, chisq, _dn_reg = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         assert dem.shape == (1, logt.shape[0])
         assert np.isfinite(dem).all()
@@ -119,7 +119,7 @@ class TestDemUnwrapCorrectness:
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=3)
         kwargs = {
             "reg_tweak": 1.0, "max_iter": 10, "rgt_fact": 1.5,
-            "dem_norm0": None, "nmu": 42, "warn": False, "l_emd": False,
+            "dem_norm0": None, "warn": False, "l_emd": False,
         }
         dem_m, edem_m, elogt_m, chisq_m, dnreg_m = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc, **kwargs,
@@ -136,7 +136,7 @@ class TestDemUnwrapCorrectness:
     def test_output_shapes(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=4)
         dem, _edem, _elogt, chisq, dn_reg = dem_unwrap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         nobs, nf = dn_in.shape
         nt = logt.shape[0]
@@ -147,7 +147,7 @@ class TestDemUnwrapCorrectness:
     def test_reconstruction_quality(self):
         dn_in, edn, rmatrix, logt, dlogt, glc, _ = _make_stack(nobs=4)
         _, _, _, _, dn_reg = dem_unwrap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         ratio = dn_reg / dn_in
         assert np.all(ratio > 0.5), f"Reconstruction too low: min ratio {ratio.min():.3f}"
@@ -161,7 +161,7 @@ class TestDemmapWithGloci:
         dn_in, edn, rmatrix, logt, dlogt, _, _ = _make_stack(nobs=3)
         glc = np.ones(dn_in.shape[1], dtype=int)
         dem, _edem, _elogt, chisq, _dn_reg = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         assert np.all(np.isfinite(dem))
         assert np.all(chisq > 0)
@@ -172,7 +172,7 @@ class TestDemmapWithGloci:
         glc = np.zeros(nf, dtype=int)
         glc[:3] = 1  # use only first 3 filters for EM loci
         dem, _edem, _elogt, chisq, _dn_reg = demmap(
-            dn_in, edn, rmatrix, logt, dlogt, glc, nmu=42, warn=False,
+            dn_in, edn, rmatrix, logt, dlogt, glc, warn=False,
         )
         assert np.all(np.isfinite(dem))
         assert np.all(chisq > 0)
@@ -189,7 +189,7 @@ class TestDemmapWithDemNorm0:
         dem_norm0 = dem_models / dem_models.max(axis=1, keepdims=True)
         dem, _edem, _elogt, _chisq, dn_reg = demmap(
             dn_in, edn, rmatrix, logt, dlogt, glc,
-            dem_norm0=dem_norm0, nmu=42, warn=False,
+            dem_norm0=dem_norm0, warn=False,
         )
         assert dem.shape == (nobs, nt)
         assert np.all(np.isfinite(dem))
