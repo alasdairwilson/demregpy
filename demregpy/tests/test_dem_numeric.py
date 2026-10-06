@@ -290,7 +290,7 @@ def test_aia_synoptic_central_pixel_golden():
     temps = 10 ** np.linspace(5.7, 7.1, num=17)
 
     dem, _edem, _elogt, chisq, dn_reg = dn2dem(
-        dn, edn, trmatrix, tresp_logt, temps, nmu=40, warn=False
+        dn, edn, trmatrix, tresp_logt, temps, warn=False
     )
 
     expected_dn = np.array([1.9375, 9.0, 155.0, 220.9375, 125.125, 3.4375])

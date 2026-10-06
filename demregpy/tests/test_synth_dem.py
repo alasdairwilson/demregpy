@@ -92,7 +92,7 @@ def test_synth_dn_ratio_close(centers, norm_mode):
     )
     norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
     _dem, _edem, _elogt, _chisq, dn_reg = dn2dem(
-        dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
+        dn_in, edn_in, trmatrix, tresp_logt, temps, warn=False, **norm_kwargs
     )
     ratio = dn_reg / dn_in
     print(f"DN_reg/DN_in ratio (mode=DEM, centers={centers}, norm={norm_mode}):", ratio)
@@ -117,7 +117,7 @@ def test_synth_chisq_near_unity(centers, norm_mode):
     )
     norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
     _dem, _edem, _elogt, chisq, _dn_reg = dn2dem(
-        dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
+        dn_in, edn_in, trmatrix, tresp_logt, temps, warn=False, **norm_kwargs
     )
     assert 0.5 < chisq < 1.5
 
@@ -133,7 +133,7 @@ def test_synth_with_noise(noise_frac, norm_mode):
     edn_noisy = noise_frac * dn_in
 
     _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
-        dn_noisy, edn_noisy, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
+        dn_noisy, edn_noisy, trmatrix, tresp_logt, temps, warn=False, **norm_kwargs
     )
 
     ratio = dn_reg / dn_noisy
@@ -155,7 +155,6 @@ def test_synth_reg_tweak_and_rgt_factor(reg_tweak, rgt_fact, norm_mode):
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
         reg_tweak=reg_tweak,
         rgt_fact=rgt_fact,
@@ -187,7 +186,7 @@ def test_synth_2d_shapes():
     for norm_mode in ["default", "gloci", "user"]:
         norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
         dem, edem, elogt, chisq, dn_reg = dn2dem(
-            dn, edn, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
+            dn, edn, trmatrix, tresp_logt, temps, warn=False, **norm_kwargs
         )
 
         nt = len(temps) - 1
@@ -213,7 +212,7 @@ def test_synth_3_leading_dim_shapes():
                 edn[t, x, y, :] = 0.1 * dn[t, x, y, :]
 
     dem, edem, elogt, chisq, dn_reg = dn2dem(
-        dn, edn, trmatrix, tresp_logt, temps, nmu=50, warn=False
+        dn, edn, trmatrix, tresp_logt, temps, warn=False
     )
 
     nt = len(temps) - 1
@@ -227,7 +226,7 @@ def test_synth_3_leading_dim_shapes():
 def test_synth_golden_outputs():
     dn_in, edn_in, trmatrix, tresp_logt, temps, _dem_mod, _mlogt = _synthetic_case()
     dem, _edem, _elogt, chisq, dn_reg = dn2dem(
-        dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False
+        dn_in, edn_in, trmatrix, tresp_logt, temps, warn=False
     )
 
     expected_dem = np.array([
@@ -281,7 +280,7 @@ def test_synth_multi_peak_dem(dem_peaks):
         )
         norm_kwargs = _norm_kwargs(norm_mode, tresp_logt, dem_mod, mlogt)
         _dem, _edem, _elogt, chisq, dn_reg = dn2dem(
-            dn_in, edn_in, trmatrix, tresp_logt, temps, nmu=50, warn=False, **norm_kwargs
+            dn_in, edn_in, trmatrix, tresp_logt, temps, warn=False, **norm_kwargs
         )
         ratio = dn_reg / dn_in
         assert np.all((ratio > 0.80) & (ratio < 1.10))
@@ -296,7 +295,6 @@ def test_synth_emd_mode_basic():
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
         emd_int=True,
         emd_ret=False,
@@ -318,7 +316,6 @@ def test_synth_emd_mode_gloci_and_user():
             trmatrix,
             tresp_logt,
             temps,
-            nmu=50,
             warn=False,
             emd_int=True,
             emd_ret=False,
@@ -339,7 +336,6 @@ def test_synth_emd_reg_tweak(reg_tweak):
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
         emd_int=True,
         emd_ret=False,
@@ -360,7 +356,6 @@ def test_synth_non_pos_mode_runs():
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
         non_pos=True,
     )
@@ -379,7 +374,6 @@ def test_synth_l_emd_flag_runs():
         trmatrix,
         tresp_logt,
         temps,
-        nmu=50,
         warn=False,
         l_emd=True,
     )
