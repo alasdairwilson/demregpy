@@ -1,0 +1,167 @@
+.. _whatsnew-1-1:
+
+***********
+Version 1.1
+***********
+
+Version 1.1 fixes a problem in how :func:`demregpy.dn2dem` chooses the regularisation parameter.
+With some response units, the old search could stop before reaching strong enough regularisation,
+returning an almost unregularised DEM. The new search covers the appropriate range regardless of
+response scale, and finds the parameter that meets the target :math:`\chi^2` without relying on a
+grid of trial values.
+
+In practice, AIA results change only slightly, while data expressed in other units may change more
+substantially. The sections below explain the cause and show examples.
+
+1. **To fix the upper bound of the search.**
+   The old search could stop short of strong enough regularisation, so for data in some units ``dn2dem`` returned an almost unregularised DEM.
+   The search now spans the relevant range when the temperature response is rescaled.
+2. **To remove the need for discrete grid points.**
+   The old method picked the nearest of a fixed set of trial values, so :math:`\chi^2` only landed near its target and the answer depended on how many values were tried.
+   The regularisation parameter is now solved for exactly.
+
+The fix was initially motivated by the upper-bound issue. Once the parameter was searched for over the right range, the grid discretisation could also be removed.
+
+Alongside this, the inversion itself now uses an ordinary SVD instead of a generalised SVD (GSVD).
+For a given regularisation parameter this gives the same DEM, but with less work, and it compares the regularisation parameter directly with the quantities that set its scale, which makes the right search range obvious (see :ref:`whatsnew-1-1-svd`).
+
+For AIA data, results change by a few percent per temperature bin, and accuracy against synthetic DEMs is similar.
+If you previously ran ``dn2dem`` on data in other units, such as irradiances or emission measures, or rescaled the inputs to order-one values, you may see a larger change.
+The clearest sign that results are affected is a returned :math:`\chi^2` that is very far from 1 (such as 0).
+
+.. _whatsnew-1-1-svd:
+
+From GSVD to SVD
+================
+
+``dn2dem`` finds the DEM :math:`\xi` that minimises
+
+.. math::
+
+   \|K\xi - g\|^2 + \lambda \|L\xi\|^2
+
+where :math:`K` is the temperature response and :math:`g` the data, both divided by the uncertainties, and :math:`L` is the diagonal constraint matrix built from the weighting (see :doc:`/weighting`).
+
+Earlier versions solved this with a generalised SVD (GSVD) of the pair :math:`K` and :math:`L`, which is the general tool for this problem when :math:`L` can be any matrix.
+In ``demregpy``, :math:`L` is always diagonal, and then the GSVD reduces to an ordinary SVD.
+Dividing each column of :math:`K` by the matching diagonal entry of :math:`L` gives :math:`K L^{-1} = U\,\mathrm{diag}(s_i)\,V^\mathsf{T}`, and the solution for any :math:`\lambda` is
+
+.. math::
+
+   \xi_\lambda = L^{-1} V\,\mathrm{diag}\!\left(\frac{s_i}{s_i^2 + \lambda}\right) U^\mathsf{T} g
+
+The singular values :math:`s_i` are the same as the GSVD's generalised singular values, so for a given :math:`\lambda` both give the same DEM.
+The difference is in the work around them.
+The old code also started from an SVD of :math:`K L^{-1}`, but then converted each :math:`s_i` into the GSVD's normalised pair :math:`\alpha_i = s_i / \sqrt{1 + s_i^2}` and :math:`\beta_i = 1 / \sqrt{1 + s_i^2}`, and rebuilt the solution through a pseudo-inverse of an :math:`n_T \times n_T` matrix.
+The new code is one SVD plus element-wise scaling, with no pseudo-inverse.
+It also leaves :math:`\lambda` compared directly with :math:`s_i^2`, which is what the next section relies on.
+
+How the regularisation parameter is chosen
+==========================================
+
+The regularisation parameter :math:`\lambda` sets the balance between the two terms.
+A small :math:`\lambda` fits the data closely but lets the noise through, and a large one gives a smooth DEM that fits the data less well.
+``dn2dem`` picks the :math:`\lambda` at which the reduced :math:`\chi^2` equals ``reg_tweak`` (the discrepancy principle).
+
+Before 1.1
+----------
+
+Earlier versions tried ``nmu`` values of :math:`\lambda` on a logarithmic grid (42 for maps, 500 for a single spectrum) and kept the one whose :math:`\chi^2` was closest to the target.
+This had two problems.
+
+1. **The upper bound was too low.**
+   The grid was set from the singular values :math:`s_i` of the problem, with its top end at :math:`\max(s_i)`, but :math:`\lambda` has to be compared with :math:`s_i^2`.
+   Whenever :math:`s_i > 1`, which happens when the response is large compared with the uncertainties, the grid never reached strong enough regularisation.
+   ``dn2dem`` then silently returned an almost unregularised, oscillating DEM with :math:`\chi^2 \approx 0`.
+2. **The answer was limited to the grid points.**
+   :math:`\chi^2` only landed on the grid point nearest its target, so the answer depended on ``nmu``.
+   With 42 points spread over many orders of magnitude, the chosen :math:`\lambda` could be noticeably off.
+
+From 1.1
+--------
+
+With the SVD above, the misfit for any :math:`\lambda` is
+
+.. math::
+
+   \|K\xi_\lambda - g\|^2 = \sum_i \left(\frac{\lambda}{s_i^2 + \lambda}\right)^2 (u_i \cdot g)^2 + \text{const}
+
+where :math:`u_i` are the columns of :math:`U` and the constant is the part of the data that no DEM can fit.
+This rises smoothly and steadily with :math:`\lambda`, which fixes both problems.
+
+1. The search for :math:`\lambda` now runs from far below the smallest :math:`s_i^2` to far above the largest, so it always reaches strong enough regularisation, whatever the units.
+2. The :math:`\lambda` that meets the target is found exactly with a root finder, so there are no grid points and nothing depends on ``nmu``.
+
+.. figure:: /_static/solver_1_1/2_lambda_selection.png
+   :alt: Misfit against regularisation parameter for one pixel, showing the old 42-point grid and the new exact solution.
+   :width: 80%
+
+   Misfit against :math:`\lambda` for one synthetic pixel.
+   The old grid picks the nearest of its 42 points (here :math:`\chi^2` is 0.94 of the target); the new solver lands on the target exactly.
+
+Effect of response scaling
+=================================
+
+Multiplying the temperature response by a constant is a change of units: the DEM should scale by the inverse constant, while the fit and scaled DEM shape stay the same.
+In 1.0, changing units could visibly change the recovered shape, and for sufficiently large responses the regularisation became too weak.
+
+.. figure:: /_static/solver_1_1/1_unit_invariance.png
+   :alt: DEMs recovered from the same synthetic data with the response in 13 different units, for the old and new solvers, and the final chi-squared against the scale factor.
+   :width: 100%
+
+   The same synthetic AIA observation (10% noise) inverted with the response multiplied by factors from :math:`10^{-30}` to :math:`10^{30}`, with each DEM scaled back for comparison.
+   Left: in 1.0 the DEM changes with the units.
+   Middle: in 1.1 the 13 curves overlap after scaling the DEMs back.
+   Right: in 1.0 :math:`\chi^2` collapses towards zero once the response is large enough.
+
+This is what happens with SDO/EVE data.
+The figure below shows hourly Fe-only DEMs of the emerging active region NOAA 11130, from 9 Fe lines with assumed 10% errors.
+In physical units (W m\ :sup:`-2` and cm\ :sup:`-3`) the old and new solvers agree.
+Due to the high order of magnitude of the raw values, it can be useful to rescale to code units;
+with the irradiances rescaled to units of :math:`10^{-6}` W m\ :sup:`-2` and the DEM to :math:`10^{44}` cm\ :sup:`-3` K\ :sup:`-1`, 1.0 returns :math:`\chi^2 \approx 0` and a hot emission measure that is off by up to ~20% and jumps in discrete steps from hour to hour, while 1.1 gives the correct answer.
+The discontinuous jumps in 1.0 are due to the grid discretisation.
+
+.. figure:: /_static/solver_1_1/5_eve.png
+   :alt: Time series of hot emission measure from SDO/EVE Fe lines in physical and rescaled units, for the old and new solvers, with chi-squared below.
+   :width: 100%
+
+   Emission measure above :math:`\log T = 6.2`, relative to its mean over the first three days (top), and :math:`\chi^2` (bottom).
+   Left: physical units.
+   Right: rescaled to order-one numbers.
+
+Effect on AIA data
+==================
+
+For AIA data in DN s\ :sup:`-1` the old grid did reach the right range, so the change is small.
+The main difference is that :math:`\chi^2` now sits on its target.
+
+.. figure:: /_static/solver_1_1/3_real_aia.png
+   :alt: Histograms of final chi-squared and of the difference from a converged solution, for 399 AIA pixels with the old and new solvers.
+   :width: 100%
+
+   399 on-disk pixels from the bundled AIA synoptic map (2014-01-01).
+   Left: final :math:`\chi^2` per pixel, where values above 1 come from the positivity loop, which raises the target until the DEM is non-negative.
+   Right: the largest difference from a "converged" DEM, computed with 1.0 and a 1000-point grid, as a fraction of the DEM peak.
+   The median difference falls from 3.6% to 0.1%.
+
+Accuracy
+========
+
+Solving for :math:`\lambda` exactly does not make the DEMs better or worse at recovering synthetic dems.
+Over 300 random one- and two-component synthetic DEMs with 10% noise and the AIA response, the median error, :math:`\sum|\xi - \xi_\mathrm{true}| / \sum|\xi_\mathrm{true}|`, went from 0.333 to 0.314, and the new solver was closer in 56% of cases.
+
+.. figure:: /_static/solver_1_1/4_truth_accuracy.png
+   :alt: Scatter plot of the error against the true DEM for the old solver versus the new solver, for 300 synthetic DEMs.
+   :width: 60%
+
+   Error against the true DEM for each synthetic case, 1.0 against 1.1.
+   Points below the line are cases where 1.1 is closer to the truth.
+
+Other changes
+=============
+
+- When the default self-normalised weighting is used, temperature bins where the first-pass DEM is negative or tiny are now filled with a small fraction of its peak instead of an absolute 1.
+  The old fill only counted as "small" in some units, and otherwise dominated the weighting.
+- The ``nmu`` argument of :func:`~demregpy.dn2dem`, :func:`~demregpy.demmap`, :func:`~demregpy.dem_unwrap` and :func:`~demregpy.dem_pix` is deprecated and has no effect.
+  Passing it emits a ``DeprecationWarning``, and it will be removed in a future version.
+- ``demregpy.dem_reg_map`` and ``demregpy.dem_inv_gsvd``, the grid search and the GSVD, have been removed.
