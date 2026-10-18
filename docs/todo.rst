@@ -4,11 +4,6 @@ Roadmap
 
 Planned improvements for future releases.
 
-Plotting
-========
-
-- Add a helper for plotting DEMograms from time-dependent DEM outputs.
-
 AIA Support
 ===========
 

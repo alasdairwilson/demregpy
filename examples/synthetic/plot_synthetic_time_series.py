@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from demregpy import dn2dem
+from demregpy.plotting import plot_demogram
 from demregpy.synthetic import synthesize_counts
 
 # %%
@@ -61,17 +62,14 @@ print("Chi-squared range:", float(np.min(chisq)), float(np.max(chisq)))
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
-im = axes[0].imshow(
-    dem.T,
-    origin="lower",
-    aspect="auto",
-    cmap="magma",
-    extent=[0, dem.shape[0] - 1, mlogt[0], mlogt[-1]],
+plot_demogram(
+    mlogt,
+    dem,
+    ax=axes[0],
+    colorbar=True,
+    clabel="DEM",
 )
-axes[0].set_xlabel("Time Step")
-axes[0].set_ylabel(r"$\log_{10} T$")
 axes[0].set_title("Recovered DEMogram")
-fig.colorbar(im, ax=axes[0], label="DEM")
 
 axes[1].plot(chisq, marker="o")
 axes[1].set_xlabel("Time Step")

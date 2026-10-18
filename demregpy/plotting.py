@@ -3,11 +3,13 @@ Plotting helpers for demregpy.
 """
 
 import importlib
+from datetime import datetime
 
 import numpy as np
 
 __all__ = [
     "plot_dem",
+    "plot_demogram",
     "plot_loci_curves",
 ]
 
@@ -311,3 +313,284 @@ def plot_loci_curves(
             if np.isfinite(ymin) and np.isfinite(ymax) and 0 < ymin < ymax:
                 ax.set_ylim(ymin, ymax)
     return ax, lines
+
+
+def _centers_to_edges(c):
+    c = np.asarray(c, dtype=float)
+    edges = np.empty(c.size + 1, dtype=float)
+    edges[1:-1] = 0.5 * (c[:-1] + c[1:])
+    edges[0] = c[0] - 0.5 * (c[1] - c[0])
+    edges[-1] = c[-1] + 0.5 * (c[-1] - c[-2])
+    return edges
+
+
+def _datetime_centers_to_edges(c):
+    if isinstance(c, np.ndarray) and c.dtype.kind == "M":
+        edges = np.empty(c.size + 1, dtype=c.dtype)
+        half_dt = (c[1:] - c[:-1]) // 2
+        edges[1:-1] = c[:-1] + half_dt
+        edges[0] = c[0] - half_dt[0]
+        edges[-1] = c[-1] + half_dt[-1]
+        return edges
+    edges = [None] * (len(c) + 1)
+    for i in range(1, len(c)):
+        dt = (c[i] - c[i - 1]) / 2
+        edges[i] = c[i - 1] + dt
+    edges[0] = c[0] - (c[1] - c[0]) / 2
+    edges[-1] = c[-1] + (c[-1] - c[-2]) / 2
+    return edges
+
+
+def plot_demogram(
+    logt,
+    dem,
+    *args,
+    times=None,
+    ax=None,
+    fig=None,
+    cmap="magma",
+    norm=None,
+    vmin=None,
+    vmax=None,
+    log=True,
+    colorbar=False,
+    cbar_kwargs=None,
+    xlabel=None,
+    ylabel=r"$\log_{10} T$",
+    clabel=None,
+    aspect="auto",
+    shading="auto",
+    **kwargs,
+):
+    r"""
+    Plot a Differential Emission Measure diagram (DEMogram) across time.
+
+    A DEMogram visualises the temporal evolution of the DEM over temperature,
+    typically from a time series of multi-channel observations.
+
+    Parameters
+    ----------
+    logt : array_like
+        Temperature-bin centres in log10(T) with shape ``(nt,)``, or bin edges
+        with shape ``(nt + 1,)``. If 3 positional arguments are supplied, the
+        arguments are interpreted as ``(times, logt, dem)``.
+    dem : array_like
+        Recovered DEM values with shape ``(n_times, nt)``.
+    *args : tuple
+        Optional third positional argument allowing ``plot_demogram(times, logt, dem)``.
+    times : array_like, optional
+        Time values corresponding to each time step (centers with shape ``(n_times,)``
+        or bin edges with shape ``(n_times + 1,)``), such as seconds, minutes,
+        or timestamps (``datetime`` objects, ISO format strings, or `astropy.time.Time`).
+        If omitted, defaults to integer time steps ``0, 1, ..., n_times - 1``.
+    ax : `matplotlib.axes.Axes`, optional
+        Axes to draw on.
+    fig : `matplotlib.figure.Figure`, optional
+        Figure to draw on if ``ax`` is not given. If the figure already has an
+        axes, it must have exactly one.
+    cmap : str or `matplotlib.colors.Colormap`, optional
+        Matplotlib colormap. Defaults to ``"magma"``.
+    norm : `matplotlib.colors.Normalize`, optional
+        Colormap normalization. If provided, overrides ``log``, ``vmin``, and ``vmax``.
+    vmin : float, optional
+        Minimum data value for color scaling. If ``log=True`` and ``vmin`` is
+        omitted, it defaults to the minimum positive finite value in ``dem``.
+    vmax : float, optional
+        Maximum data value for color scaling. If ``log=True`` and ``vmax`` is
+        omitted, it defaults to the maximum positive finite value in ``dem``.
+    log : bool, optional
+        Whether to use a logarithmic color scale (`matplotlib.colors.LogNorm`).
+        Defaults to ``True``. Any values less than or equal to zero are masked
+        as NaN. Set to ``False`` for linear color scaling or relative change maps.
+    colorbar : bool, optional
+        Whether to draw a colorbar next to the plot. Defaults to ``False``.
+    cbar_kwargs : dict, optional
+        Additional keyword arguments passed to `matplotlib.figure.Figure.colorbar`.
+    xlabel : str, optional
+        X-axis label. Defaults to ``"Time"`` if ``times`` is provided, or
+        ``"Time Step"`` otherwise.
+    ylabel : str, optional
+        Y-axis label. Defaults to ``r"$\log_{10} T$"``.
+    clabel : str, optional
+        Label for the colorbar when ``colorbar=True``. Defaults to
+        ``r"DEM [$\mathrm{cm}^{-5}\,\mathrm{K}^{-1}$]"``.
+    aspect : str or float, optional
+        Aspect ratio of the axes. Defaults to ``"auto"``.
+    shading : str, optional
+        Shading style for `matplotlib.axes.Axes.pcolormesh`. Defaults to ``"auto"``.
+    **kwargs
+        Additional keyword arguments passed to `matplotlib.axes.Axes.pcolormesh`.
+
+    Returns
+    -------
+    ax : `matplotlib.axes.Axes`
+        Axes used for the plot.
+    mesh : `matplotlib.collections.QuadMesh`
+        Matplotlib QuadMesh collection returned by ``pcolormesh``.
+    """
+    try:
+        plt = importlib.import_module("matplotlib.pyplot")
+        colors = importlib.import_module("matplotlib.colors")
+    except ImportError as exc:
+        raise ImportError("plot_demogram requires matplotlib to be installed.") from exc
+
+    if len(args) == 1:
+        if times is not None:
+            raise ValueError("times cannot be passed both positionally and as a keyword argument")
+        times_val = logt
+        logt_val = dem
+        dem_val = args[0]
+    elif len(args) == 0:
+        times_val = times
+        logt_val = logt
+        dem_val = dem
+    else:
+        raise TypeError(f"plot_demogram takes at most 3 positional arguments, but {2 + len(args)} were given")
+
+    dem_val = np.asarray(dem_val, dtype=float)
+    if dem_val.ndim != 2:
+        raise ValueError("plot_demogram expects a two-dimensional dem array with shape (n_times, nt)")
+
+    n_times, nt = dem_val.shape
+    if n_times < 2:
+        raise ValueError("dem must contain at least two time steps; use plot_dem for a single observation")
+    if nt < 2:
+        raise ValueError("dem must contain at least two temperature bins")
+
+    logt_val = np.asarray(logt_val, dtype=float)
+    if logt_val.ndim != 1:
+        raise ValueError("logt must be a one-dimensional array")
+    if logt_val.size not in (nt, nt + 1):
+        raise ValueError(
+            f"logt length ({logt_val.size}) does not match DEM temperature axis ({nt}) or edges ({nt + 1})"
+        )
+
+    if not np.all(np.diff(logt_val) > 0):
+        raise ValueError("logt must be strictly increasing")
+
+    logt_is_edges = logt_val.size == nt + 1
+
+    categorical_labels = None
+    is_datetime = False
+    if times_val is None:
+        times_plot = np.arange(n_times)
+        default_xlabel = "Time Step"
+    else:
+        default_xlabel = "Time"
+        if hasattr(times_val, "to_datetime"):
+            times_plot = times_val.to_datetime()
+            is_datetime = True
+        elif hasattr(times_val, "datetime"):
+            times_plot = times_val.datetime
+            is_datetime = True
+        elif isinstance(times_val, (list, tuple)) and len(times_val) > 0 and isinstance(times_val[0], datetime):
+            times_plot = list(times_val)
+            is_datetime = True
+        else:
+            times_arr = np.asarray(times_val)
+            if times_arr.ndim != 1:
+                raise ValueError("times must be a one-dimensional array or sequence")
+            if times_arr.size not in (n_times, n_times + 1):
+                raise ValueError(
+                    f"times length ({times_arr.size}) does not match DEM time axis ({n_times}) or edges ({n_times + 1})"
+                )
+            if times_arr.dtype.kind == "M":
+                times_plot = times_arr
+                is_datetime = True
+            elif times_arr.dtype.kind in ("U", "S", "O"):
+                try:
+                    times_plot = [datetime.fromisoformat(str(t)) for t in times_arr]
+                    is_datetime = True
+                except (ValueError, TypeError):
+                    times_plot = np.arange(times_arr.size)
+                    categorical_labels = [str(t) for t in times_arr]
+            else:
+                times_plot = np.asarray(times_arr, dtype=float)
+
+    times_len = len(times_plot)
+    if times_len not in (n_times, n_times + 1):
+        raise ValueError(
+            f"times length ({times_len}) does not match DEM time axis ({n_times}) or edges ({n_times + 1})"
+        )
+    times_is_edges = times_len == n_times + 1
+
+    ax = _resolve_axes(plt, ax=ax, fig=fig)
+
+    plot_data = dem_val.T
+    if norm is None:
+        if log:
+            positive = np.isfinite(dem_val) & (dem_val > 0)
+            if vmin is None and vmax is None:
+                if np.any(positive):
+                    vmin = float(np.min(dem_val[positive]))
+                    vmax = float(np.max(dem_val[positive]))
+                    if vmin == vmax:
+                        vmin = vmin * 0.1
+                        vmax = vmax * 10.0
+                else:
+                    vmin = 1.0
+                    vmax = 10.0
+            elif vmin is None:
+                vmin = float(np.min(dem_val[positive])) if np.any(positive) else 1.0
+                if vmin >= vmax:
+                    vmin = vmax * 0.1
+            elif vmax is None:
+                vmax = float(np.max(dem_val[positive])) if np.any(positive) else 10.0
+                if vmax <= vmin:
+                    vmax = vmin * 10.0
+
+            if vmin <= 0:
+                raise ValueError("vmin must be positive when log=True")
+            if vmax <= vmin:
+                raise ValueError("vmax must be greater than vmin")
+            norm = colors.LogNorm(vmin=vmin, vmax=vmax)
+            plot_data = np.where(plot_data > 0, plot_data, np.nan)
+        else:
+            if vmin is not None and vmax is not None and vmax <= vmin:
+                raise ValueError("vmax must be greater than vmin")
+            norm = colors.Normalize(vmin=vmin, vmax=vmax)
+
+    if logt_is_edges or times_is_edges or shading == "flat":
+        logt_mesh = logt_val if logt_is_edges else _centers_to_edges(logt_val)
+        if times_is_edges:
+            times_mesh = times_plot
+        else:
+            if categorical_labels is not None:
+                times_mesh = np.arange(n_times + 1) - 0.5
+            elif is_datetime:
+                times_mesh = _datetime_centers_to_edges(times_plot)
+            else:
+                times_mesh = _centers_to_edges(times_plot)
+        plot_shading = "flat" if shading == "auto" else shading
+    else:
+        logt_mesh = logt_val
+        times_mesh = times_plot
+        plot_shading = shading
+
+    mesh = ax.pcolormesh(
+        times_mesh,
+        logt_mesh,
+        plot_data,
+        cmap=cmap,
+        norm=norm,
+        shading=plot_shading,
+        **kwargs,
+    )
+
+    if aspect is not None:
+        ax.set_aspect(aspect)
+    if categorical_labels is not None:
+        ax.set_xticks(np.arange(n_times))
+        ax.set_xticklabels(categorical_labels)
+    ax.set_xlabel(xlabel if xlabel is not None else default_xlabel)
+    ax.set_ylabel(ylabel)
+
+    if colorbar:
+        cb_kwargs = dict(cbar_kwargs) if cbar_kwargs is not None else {}
+        if "cax" not in cb_kwargs and "ax" not in cb_kwargs:
+            cb_kwargs["ax"] = ax
+        if "label" not in cb_kwargs:
+            cb_kwargs["label"] = clabel if clabel is not None else r"DEM [$\mathrm{cm}^{-5}\,\mathrm{K}^{-1}$]"
+        ax.figure.colorbar(mesh, **cb_kwargs)
+
+    return ax, mesh

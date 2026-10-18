@@ -1,0 +1,1 @@
+Added `~demregpy.plotting.plot_demogram` to plot Differential Emission Measure diagrams across time from time-dependent DEM outputs, with support for custom time grids, bin edges or centres on both axes, logarithmic or linear colour scaling, automatic masking of non-positive bins, and colourbars.

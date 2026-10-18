@@ -48,13 +48,10 @@ ignore = [
   "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
   "RUF013", # PEP 484 prohibits implicit `Optional`
   "RUF015", # Prefer `next(iter(...))` over single element slice
-<<<<<<<
   # TODO: Fix
-  "T201", # `print` foundc
-=======
+  "T201", # `print` found
   # Bugbear (B)
   "B9", # Very opinionated checks
->>>>>>>
 ]
 
 [lint.per-file-ignores]
