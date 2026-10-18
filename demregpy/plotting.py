@@ -315,6 +315,32 @@ def plot_loci_curves(
     return ax, lines
 
 
+def _centers_to_edges(c):
+    c = np.asarray(c, dtype=float)
+    edges = np.empty(c.size + 1, dtype=float)
+    edges[1:-1] = 0.5 * (c[:-1] + c[1:])
+    edges[0] = c[0] - 0.5 * (c[1] - c[0])
+    edges[-1] = c[-1] + 0.5 * (c[-1] - c[-2])
+    return edges
+
+
+def _datetime_centers_to_edges(c):
+    if isinstance(c, np.ndarray) and c.dtype.kind == "M":
+        edges = np.empty(c.size + 1, dtype=c.dtype)
+        half_dt = (c[1:] - c[:-1]) // 2
+        edges[1:-1] = c[:-1] + half_dt
+        edges[0] = c[0] - half_dt[0]
+        edges[-1] = c[-1] + half_dt[-1]
+        return edges
+    edges = [None] * (len(c) + 1)
+    for i in range(1, len(c)):
+        dt = (c[i] - c[i - 1]) / 2
+        edges[i] = c[i - 1] + dt
+    edges[0] = c[0] - (c[1] - c[0]) / 2
+    edges[-1] = c[-1] + (c[-1] - c[-2]) / 2
+    return edges
+
+
 def plot_demogram(
     logt,
     dem,
@@ -353,7 +379,8 @@ def plot_demogram(
     *args : tuple
         Optional third positional argument allowing ``plot_demogram(times, logt, dem)``.
     times : array_like, optional
-        Time values corresponding to each time step, such as seconds, minutes,
+        Time values corresponding to each time step (centers with shape ``(n_times,)``
+        or bin edges with shape ``(n_times + 1,)``), such as seconds, minutes,
         or timestamps (``datetime`` objects, ISO format strings, or `astropy.time.Time`).
         If omitted, defaults to integer time steps ``0, 1, ..., n_times - 1``.
     ax : `matplotlib.axes.Axes`, optional
@@ -367,10 +394,10 @@ def plot_demogram(
         Colormap normalization. If provided, overrides ``log``, ``vmin``, and ``vmax``.
     vmin : float, optional
         Minimum data value for color scaling. If ``log=True`` and ``vmin`` is
-        omitted, it defaults to the minimum positive value in ``dem``.
+        omitted, it defaults to the minimum positive finite value in ``dem``.
     vmax : float, optional
         Maximum data value for color scaling. If ``log=True`` and ``vmax`` is
-        omitted, it defaults to the maximum positive value in ``dem``.
+        omitted, it defaults to the maximum positive finite value in ``dem``.
     log : bool, optional
         Whether to use a logarithmic color scale (`matplotlib.colors.LogNorm`).
         Defaults to ``True``. Any values less than or equal to zero are masked
@@ -433,15 +460,18 @@ def plot_demogram(
     logt_val = np.asarray(logt_val, dtype=float)
     if logt_val.ndim != 1:
         raise ValueError("logt must be a one-dimensional array")
-    if logt_val.size == nt + 1:
-        logt_val = 0.5 * (logt_val[:-1] + logt_val[1:])
-    elif logt_val.size != nt:
-        raise ValueError(f"logt length ({logt_val.size}) does not match DEM temperature axis ({nt})")
+    if logt_val.size not in (nt, nt + 1):
+        raise ValueError(
+            f"logt length ({logt_val.size}) does not match DEM temperature axis ({nt}) or edges ({nt + 1})"
+        )
 
     if not np.all(np.diff(logt_val) > 0):
         raise ValueError("logt must be strictly increasing")
 
+    logt_is_edges = logt_val.size == nt + 1
+
     categorical_labels = None
+    is_datetime = False
     if times_val is None:
         times_plot = np.arange(n_times)
         default_xlabel = "Time Step"
@@ -449,36 +479,66 @@ def plot_demogram(
         default_xlabel = "Time"
         if hasattr(times_val, "to_datetime"):
             times_plot = times_val.to_datetime()
+            is_datetime = True
         elif hasattr(times_val, "datetime"):
             times_plot = times_val.datetime
+            is_datetime = True
+        elif isinstance(times_val, (list, tuple)) and len(times_val) > 0 and isinstance(times_val[0], datetime):
+            times_plot = list(times_val)
+            is_datetime = True
         else:
             times_arr = np.asarray(times_val)
             if times_arr.ndim != 1:
                 raise ValueError("times must be a one-dimensional array or sequence")
-            if len(times_arr) != n_times:
-                raise ValueError(f"times length ({len(times_arr)}) does not match DEM time axis ({n_times})")
-            if times_arr.dtype.kind in ("U", "S", "O"):
+            if times_arr.size not in (n_times, n_times + 1):
+                raise ValueError(
+                    f"times length ({times_arr.size}) does not match DEM time axis ({n_times}) or edges ({n_times + 1})"
+                )
+            if times_arr.dtype.kind == "M":
+                times_plot = times_arr
+                is_datetime = True
+            elif times_arr.dtype.kind in ("U", "S", "O"):
                 try:
                     times_plot = [datetime.fromisoformat(str(t)) for t in times_arr]
+                    is_datetime = True
                 except (ValueError, TypeError):
-                    times_plot = np.arange(n_times)
+                    times_plot = np.arange(times_arr.size)
                     categorical_labels = [str(t) for t in times_arr]
             else:
-                times_plot = times_arr
+                times_plot = np.asarray(times_arr, dtype=float)
 
-    if len(times_plot) != n_times:
-        raise ValueError(f"times length ({len(times_plot)}) does not match DEM time axis ({n_times})")
+    times_len = len(times_plot)
+    if times_len not in (n_times, n_times + 1):
+        raise ValueError(
+            f"times length ({times_len}) does not match DEM time axis ({n_times}) or edges ({n_times + 1})"
+        )
+    times_is_edges = times_len == n_times + 1
 
     ax = _resolve_axes(plt, ax=ax, fig=fig)
 
     plot_data = dem_val.T
     if norm is None:
         if log:
-            positive = dem_val > 0
-            if vmin is None:
+            positive = np.isfinite(dem_val) & (dem_val > 0)
+            if vmin is None and vmax is None:
+                if np.any(positive):
+                    vmin = float(np.min(dem_val[positive]))
+                    vmax = float(np.max(dem_val[positive]))
+                    if vmin == vmax:
+                        vmin = vmin * 0.1
+                        vmax = vmax * 10.0
+                else:
+                    vmin = 1.0
+                    vmax = 10.0
+            elif vmin is None:
                 vmin = float(np.min(dem_val[positive])) if np.any(positive) else 1.0
-            if vmax is None:
+                if vmin >= vmax:
+                    vmin = vmax * 0.1
+            elif vmax is None:
                 vmax = float(np.max(dem_val[positive])) if np.any(positive) else 10.0
+                if vmax <= vmin:
+                    vmax = vmin * 10.0
+
             if vmin <= 0:
                 raise ValueError("vmin must be positive when log=True")
             if vmax <= vmin:
@@ -486,31 +546,52 @@ def plot_demogram(
             norm = colors.LogNorm(vmin=vmin, vmax=vmax)
             plot_data = np.where(plot_data > 0, plot_data, np.nan)
         else:
+            if vmin is not None and vmax is not None and vmax <= vmin:
+                raise ValueError("vmax must be greater than vmin")
             norm = colors.Normalize(vmin=vmin, vmax=vmax)
 
+    if logt_is_edges or times_is_edges or shading == "flat":
+        logt_mesh = logt_val if logt_is_edges else _centers_to_edges(logt_val)
+        if times_is_edges:
+            times_mesh = times_plot
+        else:
+            if categorical_labels is not None:
+                times_mesh = np.arange(n_times + 1) - 0.5
+            elif is_datetime:
+                times_mesh = _datetime_centers_to_edges(times_plot)
+            else:
+                times_mesh = _centers_to_edges(times_plot)
+        plot_shading = "flat" if shading == "auto" else shading
+    else:
+        logt_mesh = logt_val
+        times_mesh = times_plot
+        plot_shading = shading
+
     mesh = ax.pcolormesh(
-        times_plot,
-        logt_val,
+        times_mesh,
+        logt_mesh,
         plot_data,
         cmap=cmap,
         norm=norm,
-        shading=shading,
+        shading=plot_shading,
         **kwargs,
     )
 
     if aspect is not None:
         ax.set_aspect(aspect)
     if categorical_labels is not None:
-        ax.set_xticks(times_plot)
+        ax.set_xticks(np.arange(n_times))
         ax.set_xticklabels(categorical_labels)
     ax.set_xlabel(xlabel if xlabel is not None else default_xlabel)
     ax.set_ylabel(ylabel)
 
     if colorbar:
         cb_kwargs = dict(cbar_kwargs) if cbar_kwargs is not None else {}
+        if "cax" not in cb_kwargs and "ax" not in cb_kwargs:
+            cb_kwargs["ax"] = ax
         if "label" not in cb_kwargs:
             cb_kwargs["label"] = clabel if clabel is not None else r"DEM [$\mathrm{cm}^{-5}\,\mathrm{K}^{-1}$]"
-        ax.figure.colorbar(mesh, ax=ax, **cb_kwargs)
+        ax.figure.colorbar(mesh, **cb_kwargs)
 
     return ax, mesh
 

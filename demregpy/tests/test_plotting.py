@@ -11,6 +11,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+@pytest.fixture(autouse=True)
+def _clean_figures():
+    yield
+    plt.close("all")
+
+
 def test_plot_dem_sets_labels_and_scale():
     logt = np.array([5.8, 5.9, 6.0])
     dem = np.array([1e20, 2e20, 1.5e20])
@@ -219,15 +225,86 @@ def test_plot_demogram_accepts_times_keyword_and_positional():
 
 
 def test_plot_demogram_accepts_logt_bin_edges():
-    # logt has length nt + 1 = 4
-    logt_edges = np.array([5.7, 5.9, 6.1, 6.3])
+    # Non-uniform logt bin edges with length nt + 1 = 5 (for nt = 4)
+    logt_edges = np.array([5.0, 5.2, 5.7, 6.3, 7.0])
+    dem = np.array([
+        [1e20, 2e20, 3e20, 4e20],
+        [2e20, 3e20, 1e20, 2e20],
+    ])
+
+    _ax, mesh = plot_demogram(logt_edges, dem)
+    assert isinstance(mesh, matplotlib.collections.QuadMesh)
+    coords = mesh.get_coordinates()
+    # The mesh Y-coordinates should match the exact non-uniform bin edges
+    np.testing.assert_allclose(coords[:, 0, 1], logt_edges)
+
+
+def test_plot_demogram_accepts_times_bin_edges():
+    # times has length n_times + 1 = 4 (for n_times = 3)
+    times_edges = np.array([0.0, 10.0, 25.0, 40.0])
+    logt = np.array([5.8, 6.0, 6.2])
+    dem = np.array([
+        [1e20, 2e20, 3e20],
+        [2e20, 3e20, 1e20],
+        [1.5e20, 2.5e20, 2e20],
+    ])
+
+    ax, mesh = plot_demogram(logt, dem, times=times_edges)
+    assert ax.get_xlabel() == "Time"
+    coords = mesh.get_coordinates()
+    np.testing.assert_allclose(coords[0, :, 0], times_edges)
+
+    # Also test as 3 positional arguments with datetime edges
+    t0 = datetime(2021, 1, 1, 0, 0)
+    dt_edges = [t0 + timedelta(minutes=10 * i) for i in range(4)]
+    ax2, mesh2 = plot_demogram(dt_edges, logt, dem)
+    assert ax2.get_xlabel() == "Time"
+    assert isinstance(mesh2, matplotlib.collections.QuadMesh)
+
+
+def test_plot_demogram_constant_and_infinite_values():
+    logt = np.array([5.8, 6.0, 6.2])
+    # Constant positive DEM
+    dem_const = np.full((3, 3), 1e20)
+    _ax, mesh = plot_demogram(logt, dem_const)
+    assert mesh.norm.vmin < mesh.norm.vmax
+    assert mesh.norm.vmin > 0
+
+    # DEM containing +inf and NaN
+    dem_inf = np.array([
+        [1e20, np.inf, 3e20],
+        [np.nan, 2e20, 1e20],
+    ])
+    _ax2, mesh2 = plot_demogram(logt, dem_inf)
+    assert np.isfinite(mesh2.norm.vmin)
+    assert np.isfinite(mesh2.norm.vmax)
+    assert mesh2.norm.vmax == 3e20
+
+
+def test_plot_demogram_flat_shading():
+    logt = np.array([5.8, 6.0, 6.2])
     dem = np.array([
         [1e20, 2e20, 3e20],
         [2e20, 3e20, 1e20],
     ])
 
-    _ax, mesh = plot_demogram(logt_edges, dem)
+    # With centers and explicit shading='flat'
+    _ax, mesh = plot_demogram(logt, dem, shading="flat")
     assert isinstance(mesh, matplotlib.collections.QuadMesh)
+
+
+def test_plot_demogram_custom_cax():
+    _fig, (ax, cax) = plt.subplots(1, 2)
+    logt = np.array([5.8, 6.0, 6.2])
+    dem = np.array([
+        [1e20, 2e20, 3e20],
+        [2e20, 3e20, 1e20],
+    ])
+
+    _ax, mesh = plot_demogram(logt, dem, ax=ax, colorbar=True, cbar_kwargs={"cax": cax})
+    assert mesh.colorbar is not None
+    assert mesh.colorbar.ax is cax
+
 
 
 def test_plot_demogram_linear_scale_and_negative_values():
@@ -371,9 +448,9 @@ def test_plot_demogram_rejects_bad_shapes_and_arguments():
     with pytest.raises(ValueError, match="strictly increasing"):
         plot_demogram(np.array([6.0, 5.8, 6.2]), dem)
 
-    # times length mismatch
+    # times length mismatch (matches neither n_times=2 nor n_times+1=3)
     with pytest.raises(ValueError, match="times length"):
-        plot_demogram(logt, dem, times=np.array([0, 10, 20]))
+        plot_demogram(logt, dem, times=np.array([0, 10, 20, 30, 40]))
 
     # times passed positionally and by keyword
     with pytest.raises(ValueError, match="cannot be passed both positionally and as a keyword argument"):
