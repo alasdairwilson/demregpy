@@ -467,4 +467,3 @@ def test_plot_demogram_rejects_bad_shapes_and_arguments():
     # vmax <= vmin
     with pytest.raises(ValueError, match="vmax must be greater than vmin"):
         plot_demogram(logt, dem, vmin=10.0, vmax=5.0)
-

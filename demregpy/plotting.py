@@ -594,4 +594,3 @@ def plot_demogram(
         ax.figure.colorbar(mesh, **cb_kwargs)
 
     return ax, mesh
-
