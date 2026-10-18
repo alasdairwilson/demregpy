@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from demregpy import dn2dem, load_aia_response
+from demregpy.plotting import plot_demogram
 from demregpy.tests.example_data import load_aia_flare_timeseries
 
 # %%
@@ -75,37 +76,30 @@ im1 = axes[0, 1].imshow(cutout_94[peak], origin="lower", cmap="sdoaia94")
 axes[0, 1].set_title("94 A Near Peak")
 fig.colorbar(im1, ax=axes[0, 1], label="DN / pix / s")
 
-extent = [
-    minutes[0] - 1,
-    minutes[-1] + 1,
-    mlogt[0],
-    mlogt[-1],
-]
-im2 = axes[1, 0].imshow(
-    log_dem.T,
-    origin="lower",
-    aspect="auto",
-    cmap="magma",
-    extent=extent,
+plot_demogram(
+    mlogt,
+    dem,
+    times=minutes,
+    ax=axes[1, 0],
+    colorbar=True,
+    xlabel="Minutes From Start",
 )
 axes[1, 0].set_title("Area-summed DEMogram")
-axes[1, 0].set_xlabel("Minutes From Start")
-axes[1, 0].set_ylabel(r"$\log_{10} T$")
-fig.colorbar(im2, ax=axes[1, 0], label="log10(DEM)")
 
-im3 = axes[1, 1].imshow(
-    delta_log_dem.T,
-    origin="lower",
-    aspect="auto",
+plot_demogram(
+    mlogt,
+    delta_log_dem,
+    times=minutes,
+    ax=axes[1, 1],
+    log=False,
     cmap="coolwarm",
-    extent=extent,
     vmin=-1.5,
     vmax=1.5,
+    colorbar=True,
+    xlabel="Minutes From Start",
+    clabel=r"$\Delta \log_{10}(\mathrm{DEM})$",
 )
 axes[1, 1].set_title("Change Relative to Preflare")
-axes[1, 1].set_xlabel("Minutes From Start")
-axes[1, 1].set_ylabel(r"$\log_{10} T$")
-fig.colorbar(im3, ax=axes[1, 1], label=r"$\Delta \log_{10}(\mathrm{DEM})$")
 
 for ax in axes[0]:
     ax.set_xticks([])
